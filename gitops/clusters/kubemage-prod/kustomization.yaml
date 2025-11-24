@@ -6,6 +6,6 @@ resources:
   - ../../platform/gitops/argocd.yaml
   - ../../platform/monitoring/kube-prometheus.yaml
   - ../../platform/security/gatekeeper.yaml
-  - ../../tenants/store1
+  # - ../../tenants/store1
   - ../../tenants/demo
   - ../../tenants/bdgy
