@@ -1,0 +1,10 @@
+# Helm values for Percona Operator for MySQL (PXC)
+crd:
+  create: true
+operator:
+  image:
+    repository: percona/percona-xtradb-cluster-operator
+    tag: 1.15.0
+  replicaCount: 1
+  env:
+    WATCH_NAMESPACE: ""

@@ -1,0 +1,43 @@
+architecture: replication
+auth:
+  enabled: true
+  existingSecret: valkey-auth
+  existingSecretPasswordKey: redis-password
+master:
+  persistence:
+    enabled: true
+    storageClass: fast-local-zfs
+    size: 200Gi
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 8Gi
+    limits:
+      cpu: 4000m
+      memory: 16Gi
+replica:
+  replicaCount: 1
+  persistence:
+    enabled: true
+    storageClass: fast-local-zfs
+    size: 200Gi
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 8Gi
+sentinel:
+  enabled: true
+  masterSet: magento
+  persistence:
+    enabled: true
+    storageClass: fast-local-zfs
+    size: 10Gi
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+networkPolicy:
+  enabled: true
+  allowExternal: false
+podDisruptionBudget:
+  maxUnavailable: 1

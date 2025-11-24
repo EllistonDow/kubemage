@@ -1,0 +1,51 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: magento-mq
+  namespace: messaging
+spec:
+  replicas: 1
+  image: rabbitmq:4.1-management
+  persistence:
+    storageClassName: fast-local-zfs
+    storage: 100Gi
+  resources:
+    requests:
+      cpu: 2
+      memory: 4Gi
+    limits:
+      cpu: 4
+      memory: 8Gi
+  service:
+    type: ClusterIP
+  override:
+    statefulSet:
+      spec:
+        podManagementPolicy: Parallel
+        template:
+          metadata:
+            annotations:
+              prometheus.io/scrape: "true"
+              prometheus.io/path: /metrics
+              prometheus.io/port: "15692"
+          spec:
+            tolerations:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+                effect: NoSchedule
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: kubernetes.io/hostname
+                whenUnsatisfiable: ScheduleAnyway
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: magento-mq
+  rabbitmq:
+    additionalPlugins: "rabbitmq_management,rabbitmq_prometheus,rabbitmq_shovel"
+    advancedConfig: |
+      loopback_users.guest = false
+      cluster_partition_handling = pause_minority
+    additionalConfig: |
+      queue_master_locator = min-masters
+      vm_memory_high_watermark.relative = 0.6
+  terminationGracePeriodSeconds: 30

@@ -1,0 +1,94 @@
+name: Build Magento Images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-magento.yml'
+      - 'Dockerfile*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: registry.ovh.net/kubemage
+      SITE_DIR: app/sites/demo
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2.8
+          extensions: bcmath,ctype,curl,dom,gd,intl,mbstring,pdo_mysql,soap,sockets,sodium,xsl,zip
+
+      - name: Install Composer deps
+        working-directory: ${{ env.SITE_DIR }}
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Build Magento assets
+        working-directory: ${{ env.SITE_DIR }}
+        run: |
+          php bin/magento setup:di:compile
+          php bin/magento setup:static-content:deploy -f en_US zh_CN
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push web image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.web
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/magento-web:${{ github.sha }}
+            ${{ env.REGISTRY }}/magento-web:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/magento-web:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/magento-web:cache,mode=max
+
+      - name: Build & push php image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.php
+          build-args: |
+            SITE_PATH=${{ env.SITE_DIR }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/magento-php-fpm:${{ github.sha }}
+            ${{ env.REGISTRY }}/magento-php-fpm:latest
+
+      - name: Build & push cron image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.cron
+          build-args: |
+            SITE_PATH=${{ env.SITE_DIR }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/magento-cron:${{ github.sha }}
+            ${{ env.REGISTRY }}/magento-cron:latest
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: magento-build-log
+          path: ${{ env.SITE_DIR }}/var/log
+EOF}

@@ -1,0 +1,35 @@
+# kubeadm 配置：在 bm-a 上执行 `kubeadm init --config kubeadm-config.yaml`
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+clusterName: kubemage
+kubernetesVersion: v1.30.2
+controlPlaneEndpoint: "k8s-vip.example.com:6443"  # TODO: 替换为实际 VIP/FQDN
+networking:
+  podSubnet: 10.42.0.0/16
+  serviceSubnet: 10.43.0.0/16
+  dnsDomain: cluster.local
+scheduler:
+  extraArgs:
+    bind-address: 0.0.0.0
+controllerManager:
+  extraArgs:
+    bind-address: 0.0.0.0
+apiServer:
+  extraArgs:
+    advertise-address: 0.0.0.0
+    authorization-mode: Node,RBAC
+clusterName: kubemage
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+    extraArgs:
+      listen-metrics-urls: http://0.0.0.0:2381
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+failSwapOn: true
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: "none"   # 使用 Cilium kube-proxy replacement

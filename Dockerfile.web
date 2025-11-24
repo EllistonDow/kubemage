@@ -1,0 +1,108 @@
+ARG NGINX_VERSION=1.28.0
+ARG MODSECURITY_VERSION=v3.0.12
+ARG CRS_VERSION=v3.3.5
+
+FROM ubuntu:24.04 AS build
+ARG NGINX_VERSION
+ARG MODSECURITY_VERSION
+ARG CRS_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
+        ca-certificates \
+        build-essential \
+        curl \
+        git \
+        libcurl4-openssl-dev \
+        libexpat1-dev \
+        libfuzzy-dev \
+        libgd-dev \
+        libgeoip-dev \
+        liblmdb-dev \
+        liblua5.3-dev \
+        libmaxminddb-dev \
+        libpcre3-dev \
+        libssl-dev \
+        libtool \
+        libxml2-dev \
+        libxslt1-dev \
+        pkg-config \
+        python3 \
+        wget \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+RUN git clone --depth 1 -b ${MODSECURITY_VERSION} https://github.com/SpiderLabs/ModSecurity.git modsecurity
+RUN cd modsecurity \
+    && git submodule init \
+    && git submodule update \
+    && ./build.sh \
+    && ./configure \
+    && make -j"$(nproc)" \
+    && make install
+RUN git clone --depth 1 https://github.com/SpiderLabs/ModSecurity-nginx.git
+RUN curl -fsSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz | tar zx
+RUN cd nginx-${NGINX_VERSION} \
+    && ./configure \
+        --prefix=/opt/nginx \
+        --sbin-path=/opt/nginx/sbin/nginx \
+        --conf-path=/etc/nginx/nginx.conf \
+        --error-log-path=/var/log/nginx/error.log \
+        --http-log-path=/var/log/nginx/access.log \
+        --pid-path=/var/run/nginx.pid \
+        --modules-path=/opt/nginx/modules \
+        --with-compat \
+        --with-http_ssl_module \
+        --with-http_v2_module \
+        --with-http_gzip_static_module \
+        --with-http_stub_status_module \
+        --with-stream \
+        --with-stream_ssl_module \
+        --with-stream_ssl_preread_module \
+        --add-dynamic-module=../ModSecurity-nginx \
+    && make -j"$(nproc)" \
+    && make install
+RUN git clone --depth 1 -b ${CRS_VERSION} https://github.com/coreruleset/coreruleset.git /tmp/coreruleset
+
+FROM ubuntu:24.04
+ARG NGINX_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libcurl4 \
+        libgd3 \
+        libgeoip1 \
+        liblmdb0 \
+        liblua5.3-0 \
+        libmaxminddb0 \
+        libpcre3 \
+        libxml2 \
+        libxslt1.1 \
+        libfuzzy2 \
+        lua5.3 \
+        procps \
+        tzdata \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local /usr/local
+COPY --from=build /opt/nginx /opt/nginx
+RUN mkdir -p /etc/nginx/conf.d /etc/nginx/modsecurity /etc/nginx/snippets /etc/nginx/owasp-crs
+COPY --from=build /tmp/coreruleset /etc/nginx/owasp-crs
+COPY --from=build /build/modsecurity/unicode.mapping /etc/nginx/modsecurity/unicode.mapping
+COPY --from=build /build/modsecurity/unicode.mapping /usr/local/modsecurity/lib/unicode.mapping
+COPY --from=build /build/modsecurity/modsecurity.conf-recommended /usr/local/modsecurity/lib/modsecurity.conf
+COPY --from=build /build/nginx-${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types
+COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY docker/nginx/default.conf /etc/nginx/conf.d/magento.conf
+COPY docker/nginx/modsecurity.conf /etc/nginx/modsecurity/modsecurity.conf
+COPY docker/nginx/crs-setup.conf /etc/nginx/owasp-crs/crs-setup.conf
+COPY docker/nginx/fastcgi_params /etc/nginx/fastcgi_params
+COPY docker/nginx/snippets/fastcgi-php.conf /etc/nginx/snippets/fastcgi-php.conf
+RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp /var/log/nginx \
+    && chown -R www-data:www-data /var/cache/nginx
+ENV PATH="/opt/nginx/sbin:${PATH}"
+VOLUME ["/var/www/html"]
+EXPOSE 80 443
+CMD ["nginx", "-g", "daemon off;"]

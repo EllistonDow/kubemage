@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-self
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:your-org/kubemage-gitops.git
+    targetRevision: main
+    path: platform/gitops
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd

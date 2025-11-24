@@ -1,0 +1,138 @@
+version: "3.9"
+
+services:
+  percona:
+    image: percona/percona-server:8.4
+    container_name: magento-percona
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: PerconaRoot!2025
+      MYSQL_DATABASE: bdgymage
+      MYSQL_USER: bdgy
+      MYSQL_PASSWORD: bdgy.2010
+    command: ["--performance-schema=ON", "--innodb-buffer-pool-size=2G", "--innodb-log-file-size=512M"]
+    ports:
+      - "3306:3306"
+    volumes:
+      - percona-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    container_name: magento-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms4g -Xmx4g"
+      plugins.security.disabled: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9210:9210"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+      - ../docker/opensearch/opensearch.yml:/usr/share/opensearch/config/opensearch.yml:ro
+      - ../docker/opensearch/internal_users.yml:/usr/share/opensearch/config/opensearch-security/internal_users.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9210/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: magento
+      RABBITMQ_DEFAULT_PASS: magentoPass
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  valkey:
+    image: valkey/valkey:8
+    container_name: valkey
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-data:/data
+
+  php-fpm:
+    build:
+      context: ..
+      dockerfile: Dockerfile.php
+      target: runtime
+    container_name: magento-php
+    restart: unless-stopped
+    environment:
+      PHP_IDE_CONFIG: serverName=magento
+    volumes:
+      - ../app/sites/demo:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      percona:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      valkey:
+        condition: service_started
+
+  cron:
+    build:
+      context: ..
+      dockerfile: Dockerfile.cron
+    container_name: magento-cron
+    restart: unless-stopped
+    volumes:
+      - ../app/sites/demo:/var/www/html
+    depends_on:
+      php-fpm:
+        condition: service_started
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile.web
+    container_name: magento-web
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - ../app/sites/demo:/var/www/html:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      php-fpm:
+        condition: service_started
+
+  varnish:
+    image: varnish:7.6
+    container_name: varnish
+    restart: unless-stopped
+    ports:
+      - "80:6081"
+      - "6081:6081"
+    volumes:
+      - ./varnish/default.vcl:/etc/varnish/default.vcl:ro
+    command: ["varnishd", "-F", "-a", ":6081", "-f", "/etc/varnish/default.vcl", "-s", "malloc,256m"]
+    depends_on:
+      web:
+        condition: service_started
+
+volumes:
+  percona-data:
+  opensearch-data:
+  rabbitmq-data:
+  valkey-data:

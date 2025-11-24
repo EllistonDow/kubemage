@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-problem-detector-config
+  namespace: kube-system
+  labels:
+    app: node-problem-detector
+binaryData: {}
+data:
+  kernel-monitor.json: |
+    {
+      "plugin": "journald",
+      "pluginConfig": {
+        "source": "kernel"
+      },
+      "logPath": "/var/log/journal",
+      "lookback": "5m",
+      "bufferSize": 10,
+      "source": "kernel-monitor",
+      "conditions": [
+        {
+          "type": "KernelDeadlock",
+          "reason": "KernelHasDeadlock",
+          "message": "Kernel has deadlock"
+        }
+      ],
+      "rules": [
+        {
+          "type": "temporary",
+          "reason": "OOMKilling",
+          "pattern": "Out of memory: Kill process"
+        },
+        {
+          "type": "temporary",
+          "reason": "KernelOops",
+          "pattern": "BUG: unable to handle kernel"
+        }
+      ]
+    }

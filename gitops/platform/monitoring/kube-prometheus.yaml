@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:your-org/kubemage-gitops.git
+    targetRevision: main
+    path: platform/monitoring
+    helm:
+      valueFiles:
+        - ../../cluster/phase2/monitoring/kube-prometheus-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring

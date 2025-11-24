@@ -1,0 +1,24 @@
+# Editor/OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Environment secrets
+.env
+.sops/
+app/sites/*/auth.json
+app/sites/*/app/etc/env.php
+
+# Magento build artifacts
+app/sites/*/var/
+app/sites/*/pub/static/
+app/sites/*/pub/media/
+app/sites/*/generated/
+app/sites/*/vendor/
+app/sites/*/pub/errors/local.xml
+
+# Node/composer caches
+node_modules/
+.npm/
+composer.phar

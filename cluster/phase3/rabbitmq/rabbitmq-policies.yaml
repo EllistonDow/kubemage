@@ -1,0 +1,14 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: ha-policy
+  namespace: messaging
+spec:
+  name: quorum-ha
+  pattern: "^quorum\."
+  applyTo: queues
+  definition:
+    queue-master-locator: min-masters
+    ha-sync-mode: automatic
+    operator-policy: ""
+  vhost: /

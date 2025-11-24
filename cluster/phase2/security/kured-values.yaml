@@ -1,0 +1,17 @@
+daemonset:
+  extraArgs:
+    period: 6h
+    reboot-days: Mon,Tue,Wed,Thu
+    reboot-time: "03:00"
+    start-time: "02:45"
+    end-time: "04:00"
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      effect: NoSchedule
+      operator: Exists
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+serviceAccount:
+  create: true
+  name: kured

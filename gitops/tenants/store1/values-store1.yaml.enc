@@ -1,0 +1,9 @@
+# 使用 SOPS 加密的示例占位符
+apiVersion: v1
+kind: Secret
+metadata:
+  name: store1-values
+  namespace: store1
+stringData:
+  values.yaml: |
+    # 解密后覆盖 charts/magento values（baseUrl、镜像、Secrets 等）

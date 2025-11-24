@@ -1,0 +1,45 @@
+{{- if .Values.hpa.web.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "magento.fullname" . }}-web
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "magento.fullname" . }}-web
+  minReplicas: {{ .Values.hpa.web.minReplicas }}
+  maxReplicas: {{ .Values.hpa.web.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.web.cpu }}
+{{- end }}
+---
+{{- if .Values.hpa.php.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "magento.fullname" . }}-php
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "magento.fullname" . }}-php
+  minReplicas: {{ .Values.hpa.php.minReplicas }}
+  maxReplicas: {{ .Values.hpa.php.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.php.cpu }}
+{{- end }}

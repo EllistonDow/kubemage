@@ -1,0 +1,48 @@
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+    filesystem:
+      chunks_directory: /var/loki/chunks
+      rules_directory: /var/loki/rules
+  schemaConfig:
+    configs:
+      - from: 2024-01-01
+        store: boltdb-shipper
+        object_store: filesystem
+        schema: v11
+        index:
+          prefix: index_
+          period: 24h
+  ruler:
+    storage:
+      type: filesystem
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClassName: fast-local-zfs
+    size: 200Gi
+promtail:
+  enabled: true
+  config:
+    clients:
+      - url: http://loki-stack.monitoring.svc:3100/loki/api/v1/push
+    snippets:
+      extraScrapeConfigs: |
+        - job_name: kubemage-journal
+          journal:
+            path: /var/log/journal
+            labels:
+              job: systemd-journal
+          relabel_configs:
+            - source_labels: ['__journal__systemd_unit']
+              target_label: systemd_unit
+  daemonSet:
+    extraHostVolumeMounts:
+      - name: varlogjournal
+        mountPath: /var/log/journal
+        hostPath: /var/log/journal
+        readOnly: true

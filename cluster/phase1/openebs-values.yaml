@@ -1,0 +1,13 @@
+zfsLocalPv:
+  enabled: true
+  zfsPool:
+    name: rpool/k8s/pv
+    shared: "no"
+    compression: lz4
+    blocksize: 128k
+  storageClass:
+    name: fast-local-zfs
+    reclaimPolicy: Delete
+    volumeBindingMode: WaitForFirstConsumer
+ndm:
+  enabled: false

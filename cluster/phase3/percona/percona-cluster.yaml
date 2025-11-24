@@ -1,0 +1,72 @@
+apiVersion: pxc.percona.com/v1
+kind: PerconaXtraDBCluster
+metadata:
+  name: magento-db
+  namespace: databases
+spec:
+  crVersion: 1.15.0
+  secretsName: magento-db-secrets
+  allowUnsafeConfigurations: false
+  logCollector:
+    enabled: true
+  pause: false
+  upgradeOptions:
+    versionServiceEndpoint: https://check.percona.com
+    apply: 8.4.0
+    schedule: "0 3 * * *"
+  pxc:
+    image: percona/percona-xtradb-cluster:8.0.36-28.1
+    size: 1
+    resources:
+      requests:
+        cpu: "4"
+        memory: "16Gi"
+      limits:
+        cpu: "8"
+        memory: "32Gi"
+    volumeSpec:
+      persistentVolumeClaim:
+        storageClassName: fast-local-zfs
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 500Gi
+    affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+    expose:
+      enabled: true
+      type: ClusterIP
+  haproxy:
+    enabled: true
+    size: 1
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+    affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+  datastore:
+    size: 1
+  backup:
+    enabled: true
+    image: percona/percona-xtradb-cluster-operator:1.15.0-backup
+    storages:
+      s3-magento:
+        type: s3
+        s3:
+          bucket: kubemage-mysql
+          credentialsSecret: s3-backup-credentials
+          region: fr-par
+    schedule:
+      - name: daily-full
+        schedule: "0 2 * * *"
+        keep: 7
+        storageName: s3-magento
+      - name: hourly-incremental
+        schedule: "15 * * * *"
+        keep: 24
+        storageName: s3-magento
+  pitr:
+    enabled: true
+    storageName: s3-magento
+    timeBetweenUploads: 60

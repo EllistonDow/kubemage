@@ -1,0 +1,48 @@
+# Helm values for Argo CD (argo-cd chart)
+redis:
+  enabled: true
+server:
+  extraArgs:
+    - --insecure
+  service:
+    type: LoadBalancer
+    annotations:
+      metallb.universe.tf/address-pool: public-pool
+      external-dns.alpha.kubernetes.io/hostname: argocd.kubemage.example.com
+  ingress:
+    enabled: false
+configs:
+  params:
+    server.insecure: "true"
+  cm:
+    application.resourceTrackingMethod: annotation
+    timeout.reconciliation: 180s
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Healthy"
+      hs.message = "Synced"
+      return hs
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:admin, applications, *, *, allow
+      g, devops, role:admin
+  sshKnownHosts:
+    data: |
+      github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKZV...
+repoServer:
+  env:
+    - name: ARGOCD_EXEC_TIMEOUT
+      value: 300
+  volumes:
+    - name: sops-age
+      secret:
+        secretName: sops-age-key
+  volumeMounts:
+    - name: sops-age
+      mountPath: /home/argocd/.config/sops/age
+      readOnly: true
+controller:
+  sharding:
+    enabled: true
+    replicas: 2

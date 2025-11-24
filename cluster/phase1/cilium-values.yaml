@@ -1,0 +1,44 @@
+# Cilium Helm values（与 v1.15.x 匹配）
+cluster:
+  name: kubemage
+kubeProxyReplacement: strict
+hubble:
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_MODULE
+      - SYS_ADMIN
+      - SYS_RESOURCE
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+bgp:
+  enabled: false
+routingMode: tunnel
+ipv4NativeRoutingCIDR: 10.42.0.0/16
+operator:
+  replicas: 1
+  rollOutPods: true
+externalIPs:
+  enabled: true
+loadBalancer:
+  algorithm: maglev
+  mode: dsr
+  serviceTopology: true
+endpointRoutes:
+  enabled: true
+k8sServiceHost: k8s-vip.example.com   # TODO: 替换为 controlPlaneEndpoint 中的主机名
+k8sServicePort: 6443

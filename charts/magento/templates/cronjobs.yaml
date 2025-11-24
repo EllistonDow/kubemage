@@ -1,0 +1,31 @@
+{{- range .Values.cron.schedules }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "magento.fullname" $ }}-cron-{{ .name }}
+  labels:
+    {{- include "magento.labels" $ | nindent 4 }}
+spec:
+  schedule: {{ .schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: cron
+              image: "{{ $.Values.image.cron.repository }}:{{ $.Values.image.cron.tag }}"
+              imagePullPolicy: {{ $.Values.image.pullPolicy }}
+              command: {{ .command | toJson }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "magento.fullname" $ }}-env
+                - secretRef:
+                    name: {{ include "magento.fullname" $ }}-secrets
+              resources:
+                {{- toYaml $.Values.resources.cron | nindent 16 }}
+---
+{{- end }}

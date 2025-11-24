@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "magento.fullname" . }}-php
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount.php }}
+  selector:
+    matchLabels:
+      app: {{ include "magento.fullname" . }}-php
+  template:
+    metadata:
+      labels:
+        app: {{ include "magento.fullname" . }}-php
+        {{- include "magento.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: php
+          image: "{{ .Values.image.php.repository }}:{{ .Values.image.php.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "magento.fullname" . }}-env
+            - secretRef:
+                name: {{ include "magento.fullname" . }}-secrets
+          ports:
+            - containerPort: 9000
+          resources:
+            {{- toYaml .Values.resources.php | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 10

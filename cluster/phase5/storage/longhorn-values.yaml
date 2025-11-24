@@ -1,0 +1,16 @@
+defaultSettings:
+  defaultReplicaCount: 2
+  guaranteedEngineManagerCPU: 0.5
+  guaranteedReplicaManagerCPU: 0.5
+  replicaSoftAntiAffinity: false
+  storageReservedPercentageForDefaultDisk: 10
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 2
+preUpgradeChecker:
+  jobEnabled: true
+ingress:
+  enabled: false
+metrics:
+  serviceMonitor:
+    enabled: true

@@ -1,0 +1,23 @@
+tempo:
+  storage:
+    trace:
+      backend: filesystem
+      filesystem:
+        directory: /var/tempo
+  server:
+    http_listen_port: 3100
+  distributor:
+    receivers:
+      otlp:
+        protocols:
+          http:
+          grpc:
+  ingester:
+    max_block_duration: 5m
+  compactor:
+    compaction:
+      compacted_block_retention: 168h
+persistence:
+  enabled: true
+  storageClassName: fast-local-zfs
+  size: 200Gi

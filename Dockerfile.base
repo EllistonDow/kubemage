@@ -1,0 +1,12 @@
+# 共享基础层：安装系统依赖（供 web/php/cron 继承）
+ARG SITE_PATH=app/sites/demo
+
+FROM ubuntu:24.04 AS base
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+    php8.3 php8.3-fpm php8.3-cli php8.3-mysql php8.3-bcmath php8.3-intl php8.3-gd \
+    php8.3-soap php8.3-sockets php8.3-opcache php8.3-zip php8.3-curl php8.3-xml \
+    nginx git unzip rsync cron \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /var/www/html
+COPY ${SITE_PATH}/ /var/www/html/

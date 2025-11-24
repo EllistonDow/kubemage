@@ -1,0 +1,38 @@
+{{- if .Values.consumers.enabled }}
+{{- range .Values.consumers.list }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "magento.fullname" $ }}-consumer-{{ .name }}
+  labels:
+    {{- include "magento.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ .replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ include "magento.fullname" $ }}-consumer-{{ .name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "magento.fullname" $ }}-consumer-{{ .name }}
+        {{- include "magento.labels" $ | nindent 8 }}
+    spec:
+      containers:
+        - name: consumer
+          image: "{{ $.Values.image.php.repository }}:{{ $.Values.image.php.tag }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command:
+            - /bin/bash
+            - -c
+            - >-
+              php bin/magento queue:consumers:start {{ .queue }} --single-thread --max-messages={{ .maxMessages | default 1000 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "magento.fullname" $ }}-env
+            - secretRef:
+                name: {{ include "magento.fullname" $ }}-secrets
+          resources:
+            {{- toYaml ( .resources | default $.Values.resources.php ) | nindent 12 }}
+---
+{{- end }}
+{{- end }}

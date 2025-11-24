@@ -1,0 +1,26 @@
+---
+_meta:
+  type: "internalusers"
+  config_version: 2
+admin:
+  hash: "$2y$12$baEpgRU8OVVtpQMhZwb52eFMTaTDLvA0jatzoRYs29Buea36W3b3C"
+  reserved: true
+  backend_roles:
+  - "admin"
+  description: "Admin user"
+kibanaserver:
+  hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
+  reserved: true
+  description: "OpenSearch Dashboards"
+logstash:
+  hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrZtmNfqB3iM/.jL0XoV9sghS2"
+  reserved: false
+  backend_roles:
+  - "logstash"
+  description: "Logstash ingestion user"
+doge:
+  hash: "$2y$12$hdaZL2/el9BM0BB/tSSarOEjOPD6y/qM6qfo/66j8hmMrzSGJ0Eu2"
+  reserved: false
+  backend_roles:
+  - "all_access"
+  description: "Magento integration user"

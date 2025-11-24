@@ -1,0 +1,28 @@
+controller:
+  replicaCount: 2
+  service:
+    type: LoadBalancer
+    annotations:
+      metallb.universe.tf/address-pool: public-pool
+    externalTrafficPolicy: Local
+  config:
+    use-proxy-protocol: "true"
+    enable-modsecurity: "true"
+    enable-owasp-modsecurity-crs: "true"
+    proxy-body-size: 200m
+    proxy-read-timeout: "600"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  podAnnotations:
+    cilium.io/ingress-controller: "true"
+podSecurityPolicy:
+  enabled: false

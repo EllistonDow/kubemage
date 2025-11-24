@@ -1,0 +1,17 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: public-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 51.51.51.100-51.51.51.110  # TODO: 替换成 OVH Failover IP 段
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: public-advertise
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - public-pool

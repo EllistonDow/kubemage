@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-problem-detector
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: node-problem-detector
+  template:
+    metadata:
+      labels:
+        app: node-problem-detector
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: node-problem-detector
+      containers:
+        - name: node-problem-detector
+          image: registry.k8s.io/node-problem-detector/node-problem-detector:v0.9.3
+          command:
+            - /node-problem-detector
+            - --config.system-log-monitor=/config/kernel-monitor.json
+          volumeMounts:
+            - name: log
+              mountPath: /log
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: log
+          hostPath:
+            path: /var/log
+        - name: config
+          configMap:
+            name: node-problem-detector-config
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-problem-detector
+  namespace: kube-system

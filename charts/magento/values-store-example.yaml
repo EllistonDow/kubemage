@@ -1,0 +1,62 @@
+image:
+  web:
+    repository: registry.ovh.net/kubemage/magento-web
+    tag: 2025.11.01
+  php:
+    repository: registry.ovh.net/kubemage/magento-php-fpm
+    tag: 2025.11.01
+  cron:
+    repository: registry.ovh.net/kubemage/magento-cron
+    tag: 2025.11.01
+  pullPolicy: IfNotPresent
+
+env:
+  baseUrl: https://store1.example.com
+  mediaBucket: s3://kubemage-media/store1
+  rabbitmqHost: magento-mq.messaging.svc.cluster.local
+  redisHost: valkey-master.cache.svc.cluster.local
+  mysqlHost: magento-db-pxc.databases.svc.cluster.local
+
+secrets:
+  mysqlUser: {{ "bXlfc3RvcmU=" }}
+  mysqlPassword: {{ "c3VwZXJzZWNyZXQ=" }}
+  mysqlRoot: {{ "cm9vdHNlY3JldA==" }}
+  rabbitmqPassword: {{ "cmFiYml0" }}
+  redisPassword: {{ "cmVkaXM=" }}
+
+cron:
+  schedules:
+    - name: minute
+      schedule: "*/1 * * * *"
+      command: ["/bin/bash","-c","php bin/magento cron:run"]
+
+consumers:
+  enabled: true
+  list:
+    - name: async
+      queue: async.operations.all
+      replicas: 2
+      maxMessages: 100
+    - name: email
+      queue: email.notifications
+      replicas: 1
+
+keda:
+  rabbitmq:
+    enabled: true
+    queueName: async.operations.all
+    hostSecret: rabbitmq-credentials
+    triggerType: rabbitmq
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: store1.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: store1-tls
+      hosts:
+        - store1.example.com

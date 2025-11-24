@@ -1,0 +1,97 @@
+image:
+  web:
+    repository: registry.example.com/kubemage/magento-web
+    tag: latest
+  php:
+    repository: registry.example.com/kubemage/magento-php-fpm
+    tag: latest
+  cron:
+    repository: registry.example.com/kubemage/magento-cron
+    tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount:
+  web: 2
+  php: 2
+  varnish: 2
+
+service:
+  type: ClusterIP
+  port: 8080
+
+varnish:
+  enabled: true
+  service:
+    type: ClusterIP
+  configSecret: varnish-vcl
+
+resources:
+  web:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  php:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 4
+      memory: 4Gi
+  cron:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+
+env:
+  baseUrl: https://store.example.com
+  mediaBucket: s3://kubemage-media/store
+  rabbitmqHost: magento-mq.messaging.svc
+  redisHost: valkey.cache.svc
+  mysqlHost: magento-db-pxc.databases.svc
+
+cron:
+  schedules:
+    - name: main
+      schedule: "*/5 * * * *"
+      command: ["/bin/bash", "-c", "php bin/magento cron:run"]
+
+consumers:
+  enabled: true
+  list:
+    - name: async-bulk
+      queue: async.operations.all
+    - name: email
+      queue: email.notifications
+
+hpa:
+  web:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    cpu: 60
+  php:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 12
+    cpu: 70
+keda:
+  rabbitmq:
+    enabled: true
+    queueName: async.operations.all
+    scalingStrategy: cpu
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: store.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: store-tls
+      hosts:
+        - store.example.com

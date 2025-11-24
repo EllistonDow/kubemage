@@ -1,0 +1,23 @@
+cluster.name: magento-cluster
+node.name: magento-node-1
+path.data: /usr/share/opensearch/data
+path.logs: /usr/share/opensearch/logs
+network.host: 0.0.0.0
+http.port: 9210
+discovery.type: single-node
+bootstrap.memory_lock: true
+
+plugins.security.ssl.transport.pemcert_filepath: esnode.pem
+plugins.security.ssl.transport.pemkey_filepath: esnode-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: root-ca.pem
+plugins.security.ssl.transport.enforce_hostname_verification: false
+plugins.security.ssl.http.enabled: false
+plugins.security.allow_unsafe_democertificates: true
+plugins.security.allow_default_init_securityindex: true
+plugins.security.authcz.admin_dn: ['CN=kirk,OU=client,O=client,L=test,C=de']
+plugins.security.restapi.roles_enabled: [all_access, security_rest_api_access]
+plugins.security.enable_snapshot_restore_privilege: true
+plugins.security.check_snapshot_restore_write_privileges: true
+plugins.security.system_indices.enabled: true
+plugins.security.audit.type: internal_opensearch
+node.max_local_storage_nodes: 1

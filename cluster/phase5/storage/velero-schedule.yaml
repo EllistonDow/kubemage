@@ -1,0 +1,32 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-full
+  namespace: velero
+spec:
+  schedule: "0 1 * * *"
+  template:
+    ttl: 168h0m0s
+    snapshotVolumes: true
+    defaultVolumesToRestic: false
+    includedNamespaces:
+      - databases
+      - search
+      - messaging
+      - cache
+      - store1
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: hourly-system
+  namespace: velero
+spec:
+  schedule: "0 * * * *"
+  template:
+    ttl: 48h0m0s
+    snapshotVolumes: false
+    defaultVolumesToRestic: true
+    includedNamespaces:
+      - kube-system
+      - argocd

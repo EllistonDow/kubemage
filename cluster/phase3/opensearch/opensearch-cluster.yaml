@@ -1,0 +1,89 @@
+apiVersion: opensearch.opster.io/v1
+kind: OpenSearchCluster
+metadata:
+  name: magento-search
+  namespace: search
+spec:
+  general:
+    version: 2.19.0
+    serviceName: opensearch
+    security:
+      tls:
+        transport:
+          generate: true
+        http:
+          generate: true
+  dashboards:
+    enable: true
+    replicas: 1
+    version: 2.19.0
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+  nodePools:
+    - component: masters
+      replicas: 1
+      roles: ["master", "data", "ingest"]
+      persistence:
+        pvc:
+          accessModes: ["ReadWriteOnce"]
+          storageClassName: fast-local-zfs
+          resources:
+            requests:
+              storage: 1Ti
+      resources:
+        requests:
+          cpu: "6"
+          memory: "24Gi"
+        limits:
+          cpu: "10"
+          memory: "32Gi"
+      podDisruptionBudget:
+        enabled: true
+        minAvailable: 0
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              opster.io/opensearch-nodepool: masters
+  monitoring:
+    enable: true
+    prometheus:
+      scrape: true
+  indexTemplate:
+    index_patterns: ["magento-*", "logs-*"]
+    template:
+      settings:
+        number_of_shards: 1
+        number_of_replicas: 0
+        lifecycle.name: magento-hot
+  ilmPolicies:
+    - name: magento-hot
+      body:
+        policy:
+          phases:
+            hot:
+              actions:
+                rollover:
+                  max_size: "50gb"
+                  max_age: "30d"
+            delete:
+              min_age: "90d"
+              actions:
+                delete: {}
+  snapshotRepositories:
+    - name: s3-magento
+      type: s3
+      config:
+        bucket: kubemage-opensearch
+        endpoint: https://s3.gra.ovh.net
+        protocol: https
+      secretRef:
+        name: s3-opensearch
+  snapshotSchedule:
+    enabled: true
+    cron: "0 1 * * *"
+    repository: s3-magento
