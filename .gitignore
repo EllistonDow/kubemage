@@ -18,6 +18,12 @@ app/sites/*/generated/
 app/sites/*/vendor/
 app/sites/*/pub/errors/local.xml
 
+# Backup artifacts
+artifacts/shared-backups/*
+!artifacts/shared-backups/.gitkeep
+artifacts/opensearch-snapshots/*
+!artifacts/opensearch-snapshots/.gitkeep
+
 # Node/composer caches
 node_modules/
 .npm/

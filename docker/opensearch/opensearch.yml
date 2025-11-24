@@ -2,6 +2,7 @@ cluster.name: magento-cluster
 node.name: magento-node-1
 path.data: /usr/share/opensearch/data
 path.logs: /usr/share/opensearch/logs
+path.repo: /usr/share/opensearch/snapshots
 network.host: 0.0.0.0
 http.port: 9210
 discovery.type: single-node

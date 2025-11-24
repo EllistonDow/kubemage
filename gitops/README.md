@@ -18,11 +18,17 @@ gitops/
 │   ├── monitoring/kube-prometheus.yaml
 │   └── security/gatekeeper.yaml
 └── tenants/
-    └── store1/
+    ├── store1/
+    │   ├── kustomization.yaml
+    │   └── values-store1.yaml.enc
+    ├── demo/
+    │   ├── kustomization.yaml
+    │   └── values-demo.yaml (需 SOPS 加密)
+    └── bdgy/
         ├── kustomization.yaml
-        └── values-store1.yaml.enc
+        └── values-bdgy.yaml (需 SOPS 加密)
 ```
 
-- `clusters/kubemage-prod/kustomization.yaml` 引用 `infra/overlays/prod`, `platform/*`, `tenants/<store>`。
+- `clusters/kubemage-prod/kustomization.yaml` 引用 `infra/overlays/prod`, `platform/*`, `tenants/<store>`（store1/demo/bdgy）。
 - 每个目录可进一步拆成 HelmRelease/HelmChart CR 或 Argo Application。
 - secrets 使用 SOPS 加密（`.enc.yaml`）。

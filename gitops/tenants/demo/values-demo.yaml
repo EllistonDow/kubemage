@@ -1,0 +1,37 @@
+# 使用 SOPS 加密后提交。以下值为第一个 demo 站点的默认配置。
+image:
+  web:
+    repository: registry.internal/kubemage/magento-web
+    tag: demo-0.1.0
+  php:
+    repository: registry.internal/kubemage/magento-php-fpm
+    tag: demo-0.1.0
+  cron:
+    repository: registry.internal/kubemage/magento-cron
+    tag: demo-0.1.0
+
+env:
+  baseUrl: https://magento.k8s.bdgyoo.com
+  mysqlHost: percona.databases.svc.cluster.local
+  rabbitmqHost: rabbitmq.messaging.svc.cluster.local
+  redisHost: valkey.cache.svc.cluster.local
+  mediaBucket: s3://kubemage-media/demo
+  openSearchHost: opensearch-http.search.svc.cluster.local
+  openSearchPort: 9210
+
+varnish:
+  configSecret: demo-varnish-vcl
+
+redis:
+  databases:
+    cache: 8
+    fpc: 9
+    session: 10
+    page_cache: 11
+
+secrets:
+  mysqlDatabase: ENC[TODO]
+  mysqlUser: ENC[TODO]
+  mysqlPassword: ENC[TODO]
+  rabbitmqPassword: ENC[bWFnZW50b1Bhc3M=]  # magentoPass
+  redisPassword: ENC[bl9h]  # 留空时填 n/a

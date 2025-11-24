@@ -1,0 +1,36 @@
+image:
+  web:
+    repository: registry.internal/kubemage/magento-web
+    tag: bdgy-0.1.0
+  php:
+    repository: registry.internal/kubemage/magento-php-fpm
+    tag: bdgy-0.1.0
+  cron:
+    repository: registry.internal/kubemage/magento-cron
+    tag: bdgy-0.1.0
+
+env:
+  baseUrl: https://bdgy.k8s.bdgyoo.com
+  mysqlHost: percona.databases.svc.cluster.local
+  rabbitmqHost: rabbitmq.messaging.svc.cluster.local
+  redisHost: valkey.cache.svc.cluster.local
+  mediaBucket: s3://kubemage-media/bdgy
+  openSearchHost: opensearch-http.search.svc.cluster.local
+  openSearchPort: 9210
+
+varnish:
+  configSecret: bdgy-varnish-vcl
+
+redis:
+  databases:
+    cache: 2
+    fpc: 3
+    session: 4
+    page_cache: 5
+
+secrets:
+  mysqlDatabase: ENC[TODO]
+  mysqlUser: ENC[TODO]
+  mysqlPassword: ENC[TODO]
+  rabbitmqPassword: ENC[bWFnZW50b1Bhc3M=]
+  redisPassword: ENC[bl9h]

@@ -1,0 +1,85 @@
+version: "3.9"
+
+services:
+  percona:
+    image: percona/percona-server:8.4
+    container_name: percona
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: PerconaRoot!2025
+    command:
+      [
+        "--performance-schema=ON",
+        "--innodb-buffer-pool-size=4G",
+        "--innodb-log-file-size=512M",
+        "--log-bin-trust-function-creators=ON"
+      ]
+    volumes:
+      - percona-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - magento-shared
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    container_name: opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms6g -Xmx6g"
+      plugins.security.disabled: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+      - ../../artifacts/opensearch-snapshots:/usr/share/opensearch/snapshots
+      - ../../docker/opensearch/opensearch.yml:/usr/share/opensearch/config/opensearch.yml:ro
+      - ../../docker/opensearch/internal_users.yml:/usr/share/opensearch/config/opensearch-security/internal_users.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9210/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - magento-shared
+
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: magento
+      RABBITMQ_DEFAULT_PASS: magentoPass
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - magento-shared
+
+  valkey:
+    image: valkey/valkey:8
+    container_name: valkey
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey-data:/data
+    networks:
+      - magento-shared
+
+volumes:
+  percona-data:
+  opensearch-data:
+  rabbitmq-data:
+  valkey-data:
+
+networks:
+  magento-shared:
+    name: magento-shared
