@@ -4,8 +4,3 @@ version: 0.1.0
 description: Magento 2.4.8 multi-component chart (web, php-fpm, varnish, cron, consumers)
 type: application
 appVersion: "2.4.8"
-dependencies:
-  - name: varnish
-    repository: ""
-    version: 0.1.0
-    condition: varnish.enabled
