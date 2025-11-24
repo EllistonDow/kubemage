@@ -29,8 +29,8 @@ redis:
     page_cache: 5
 
 secrets:
-  mysqlDatabase: ENC[TODO]
-  mysqlUser: ENC[TODO]
-  mysqlPassword: ENC[TODO]
-  rabbitmqPassword: ENC[bWFnZW50b1Bhc3M=]
-  redisPassword: ENC[bl9h]
+  mysqlUser: bWFnZW50bw==
+  mysqlPassword: TWFnZW50bzIwMjUh
+  mysqlRoot: UGVyY29uYVJvb3QhMjAyNQ==
+  rabbitmqPassword: bWFnZW50b1Bhc3M=
+  redisPassword: cmVkaXNQYXNzMjAyNQ==

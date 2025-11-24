@@ -30,8 +30,8 @@ redis:
     page_cache: 11
 
 secrets:
-  mysqlDatabase: ENC[TODO]
-  mysqlUser: ENC[TODO]
-  mysqlPassword: ENC[TODO]
-  rabbitmqPassword: ENC[bWFnZW50b1Bhc3M=]  # magentoPass
-  redisPassword: ENC[bl9h]  # 留空时填 n/a
+  mysqlUser: bWFnZW50bw==               # "magento"
+  mysqlPassword: TWFnZW50bzIwMjUh       # "Magento2025!"
+  mysqlRoot: UGVyY29uYVJvb3QhMjAyNQ==  # "PerconaRoot!2025"
+  rabbitmqPassword: bWFnZW50b1Bhc3M=    # "magentoPass"
+  redisPassword: cmVkaXNQYXNzMjAyNQ==   # "redisPass2025"
