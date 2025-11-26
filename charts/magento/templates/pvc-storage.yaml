@@ -1,0 +1,62 @@
+{{- if or (or .Values.storage.generated.enabled .Values.storage.varDi.enabled) .Values.storage.pubStatic.enabled }}
+{{- if .Values.storage.generated.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "magento.fullname" . }}-generated
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  accessModes:
+    - {{ .Values.storage.generated.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.generated.size | default "2Gi" }}
+  {{- if .Values.storage.generated.storageClass }}
+  storageClassName: {{ .Values.storage.generated.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.storage.varDi.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "magento.fullname" . }}-vardi
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  accessModes:
+    - {{ .Values.storage.varDi.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.varDi.size | default "2Gi" }}
+  {{- if .Values.storage.varDi.storageClass }}
+  storageClassName: {{ .Values.storage.varDi.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.storage.pubStatic.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "magento.fullname" . }}-pubstatic
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  accessModes:
+    - {{ .Values.storage.pubStatic.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.pubStatic.size | default "4Gi" }}
+  {{- if .Values.storage.pubStatic.storageClass }}
+  storageClassName: {{ .Values.storage.pubStatic.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}
