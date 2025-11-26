@@ -15,6 +15,10 @@ spec:
         app: {{ include "magento.fullname" . }}-php
         {{- include "magento.labels" . | nindent 8 }}
     spec:
+      {{- $storage := .Values.storage | default dict }}
+      {{- $generated := $storage.generated | default dict }}
+      {{- $varDi := $storage.varDi | default dict }}
+      {{- $pubStatic := $storage.pubStatic | default dict }}
       containers:
         - name: php
           image: "{{ .Values.image.php.repository }}:{{ .Values.image.php.tag }}"
@@ -24,17 +28,17 @@ spec:
                 name: {{ include "magento.fullname" . }}-env
             - secretRef:
                 name: {{ include "magento.fullname" . }}-secrets
-          {{- if or (or .Values.storage.generated.enabled .Values.storage.varDi.enabled) .Values.storage.pubStatic.enabled }}
+          {{- if or (or ($generated.enabled | default false) ($varDi.enabled | default false)) ($pubStatic.enabled | default false) }}
           volumeMounts:
-            {{- if .Values.storage.generated.enabled }}
+            {{- if ($generated.enabled | default false) }}
             - name: generated
               mountPath: /var/www/html/generated
             {{- end }}
-            {{- if .Values.storage.varDi.enabled }}
+            {{- if ($varDi.enabled | default false) }}
             - name: vardi
               mountPath: /var/www/html/var/di
             {{- end }}
-            {{- if .Values.storage.pubStatic.enabled }}
+            {{- if ($pubStatic.enabled | default false) }}
             - name: pubstatic
               mountPath: /var/www/html/pub/static
             {{- end }}
@@ -51,19 +55,19 @@ spec:
             tcpSocket:
               port: 9000
             initialDelaySeconds: 10
-      {{- if or (or .Values.storage.generated.enabled .Values.storage.varDi.enabled) .Values.storage.pubStatic.enabled }}
+      {{- if or (or ($generated.enabled | default false) ($varDi.enabled | default false)) ($pubStatic.enabled | default false) }}
       volumes:
-        {{- if .Values.storage.generated.enabled }}
+        {{- if ($generated.enabled | default false) }}
         - name: generated
           persistentVolumeClaim:
             claimName: {{ include "magento.fullname" . }}-generated
         {{- end }}
-        {{- if .Values.storage.varDi.enabled }}
+        {{- if ($varDi.enabled | default false) }}
         - name: vardi
           persistentVolumeClaim:
             claimName: {{ include "magento.fullname" . }}-vardi
         {{- end }}
-        {{- if .Values.storage.pubStatic.enabled }}
+        {{- if ($pubStatic.enabled | default false) }}
         - name: pubstatic
           persistentVolumeClaim:
             claimName: {{ include "magento.fullname" . }}-pubstatic
