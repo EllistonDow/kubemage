@@ -15,7 +15,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: registry.k8s.io/kubernetes/kubectl:v1.30.3
+              image: dtzar/helm-kubectl:3.13.3
               imagePullPolicy: IfNotPresent
               command:
                 - /bin/bash
