@@ -22,7 +22,6 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
-                  chmod +x /opt/scripts/shared-backup.sh
                   /opt/scripts/shared-backup.sh
               env:
                 - name: BACKUP_ROOT
