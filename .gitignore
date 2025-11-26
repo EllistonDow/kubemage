@@ -24,6 +24,7 @@ artifacts/shared-backups/*
 !artifacts/shared-backups/.gitkeep
 artifacts/opensearch-snapshots/*
 !artifacts/opensearch-snapshots/.gitkeep
+artifacts/db-backup/*.sql.gz
 
 # Node/composer caches
 node_modules/

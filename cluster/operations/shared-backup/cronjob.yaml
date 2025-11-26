@@ -36,10 +36,10 @@ spec:
                   value: search
                 - name: OPENSEARCH_SELECTOR
                   value: app=opensearch
+                - name: PERCONA_SELECTOR
+                  value: app.kubernetes.io/instance=percona-cluster-pxc-d
                 - name: OPENSEARCH_ENDPOINT
                   value: http://opensearch.search.svc.cluster.local:9200
-                - name: PERCONA_SELECTOR
-                  value: app=percona
                 - name: PERCONA_ROOT_PASSWORD
                   valueFrom:
                     secretKeyRef:
