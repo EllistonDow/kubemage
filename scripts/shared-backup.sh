@@ -16,6 +16,8 @@ OPENSEARCH_SELECTOR="${OPENSEARCH_SELECTOR:-app=opensearch}"
 OPENSEARCH_POD="${OPENSEARCH_POD:-}"
 OPENSEARCH_ENDPOINT="${OPENSEARCH_ENDPOINT:-http://127.0.0.1:9200}"
 PERCONA_ROOT_PASSWORD="${PERCONA_ROOT_PASSWORD:-PerconaRoot!2025}"
+PERCONA_K8S_CONTAINER="${PERCONA_K8S_CONTAINER:-}"
+OPENSEARCH_K8S_CONTAINER="${OPENSEARCH_K8S_CONTAINER:-}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 
@@ -64,7 +66,11 @@ backup_percona() {
   if [[ "$BACKEND" == "docker" ]]; then
     docker exec "$PERCONA_CONTAINER" sh -c "MYSQL_PWD='$PERCONA_ROOT_PASSWORD' mysqldump -uroot --single-transaction --quick --routines --events --triggers --all-databases"
   else
-    kubectl exec -n "$PERCONA_NAMESPACE" "$PERCONA_POD" -- sh -c "MYSQL_PWD='$PERCONA_ROOT_PASSWORD' mysqldump -uroot --single-transaction --quick --routines --events --triggers --all-databases"
+    if [[ -n "$PERCONA_K8S_CONTAINER" ]]; then
+      kubectl exec -n "$PERCONA_NAMESPACE" "$PERCONA_POD" -c "$PERCONA_K8S_CONTAINER" -- sh -c "MYSQL_PWD='$PERCONA_ROOT_PASSWORD' mysqldump -uroot --single-transaction --quick --routines --events --triggers --all-databases"
+    else
+      kubectl exec -n "$PERCONA_NAMESPACE" "$PERCONA_POD" -- sh -c "MYSQL_PWD='$PERCONA_ROOT_PASSWORD' mysqldump -uroot --single-transaction --quick --routines --events --triggers --all-databases"
+    fi
   fi | gzip -c >"$outfile"
   log "Percona 备份完成 (${outfile})"
 }
@@ -90,8 +96,13 @@ backup_opensearch() {
     docker exec "$OPENSEARCH_CONTAINER" mkdir -p "$repo_location"
     docker exec "$OPENSEARCH_CONTAINER" chmod 0777 "$repo_location"
   else
-    kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- mkdir -p "$repo_location"
-    kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- chmod 0777 "$repo_location"
+    if [[ -n "$OPENSEARCH_K8S_CONTAINER" ]]; then
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -c "$OPENSEARCH_K8S_CONTAINER" -- mkdir -p "$repo_location"
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -c "$OPENSEARCH_K8S_CONTAINER" -- chmod 0777 "$repo_location"
+    else
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- mkdir -p "$repo_location"
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- chmod 0777 "$repo_location"
+    fi
   fi
 
   local register_payload
@@ -125,9 +136,15 @@ JSON
       "$OPENSEARCH_ENDPOINT/_snapshot/${repo_name}/full?wait_for_completion=true" \
       -H 'Content-Type: application/json' --data-binary @-)
   else
-    snapshot_response=$(printf '%s' "$snapshot_payload" | kubectl exec -i -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- curl -s -w "\n%{http_code}" -X PUT \
+    if [[ -n "$OPENSEARCH_K8S_CONTAINER" ]]; then
+      snapshot_response=$(printf '%s' "$snapshot_payload" | kubectl exec -i -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -c "$OPENSEARCH_K8S_CONTAINER" -- curl -s -w "\n%{http_code}" -X PUT \
       "$OPENSEARCH_ENDPOINT/_snapshot/${repo_name}/full?wait_for_completion=true" \
       -H 'Content-Type: application/json' --data-binary @-)
+    else
+      snapshot_response=$(printf '%s' "$snapshot_payload" | kubectl exec -i -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- curl -s -w "\n%{http_code}" -X PUT \
+      "$OPENSEARCH_ENDPOINT/_snapshot/${repo_name}/full?wait_for_completion=true" \
+      -H 'Content-Type: application/json' --data-binary @-)
+    fi
   fi
   local snapshot_code
   snapshot_code=$(printf '%s' "$snapshot_response" | tail -n1)
@@ -143,7 +160,11 @@ JSON
   if [[ "$BACKEND" == "docker" ]]; then
     docker exec "$OPENSEARCH_CONTAINER" tar -C /usr/share/opensearch/snapshots -cf - "$repo_name" | gzip -c >"$outfile"
   else
-    kubectl exec -i -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- tar -C /usr/share/opensearch/snapshots -cf - "$repo_name" | gzip -c >"$outfile"
+    if [[ -n "$OPENSEARCH_K8S_CONTAINER" ]]; then
+      kubectl exec -i -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -c "$OPENSEARCH_K8S_CONTAINER" -- tar -C /usr/share/opensearch/snapshots -cf - "$repo_name" | gzip -c >"$outfile"
+    else
+      kubectl exec -i -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- tar -C /usr/share/opensearch/snapshots -cf - "$repo_name" | gzip -c >"$outfile"
+    fi
   fi
 
   log "清理临时快照仓库"
@@ -151,8 +172,13 @@ JSON
     docker exec "$OPENSEARCH_CONTAINER" curl -s -o /dev/null -X DELETE "$OPENSEARCH_ENDPOINT/_snapshot/${repo_name}"
     docker exec "$OPENSEARCH_CONTAINER" rm -rf "$repo_location"
   else
-    kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- curl -s -o /dev/null -X DELETE "$OPENSEARCH_ENDPOINT/_snapshot/${repo_name}"
-    kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- rm -rf "$repo_location"
+    if [[ -n "$OPENSEARCH_K8S_CONTAINER" ]]; then
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -c "$OPENSEARCH_K8S_CONTAINER" -- curl -s -o /dev/null -X DELETE "$OPENSEARCH_ENDPOINT/_snapshot/${repo_name}"
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -c "$OPENSEARCH_K8S_CONTAINER" -- rm -rf "$repo_location"
+    else
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- curl -s -o /dev/null -X DELETE "$OPENSEARCH_ENDPOINT/_snapshot/${repo_name}"
+      kubectl exec -n "$OPENSEARCH_NAMESPACE" "$OPENSEARCH_POD" -- rm -rf "$repo_location"
+    fi
   fi
 
   log "OpenSearch 备份完成 (${outfile})"
