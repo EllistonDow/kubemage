@@ -7,7 +7,7 @@ resources:
   - ../../platform/gitops/monitoring.yaml
   - ../../platform/gitops/gatekeeper.yaml
   - ../../platform/gitops/datastores.yaml
-  - ../../cluster/operations/shared-backup
+  - ../../../cluster/operations/shared-backup
   # - ../../tenants/store1
   - ../../tenants/demo
   - ../../tenants/bdgy
