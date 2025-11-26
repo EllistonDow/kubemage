@@ -64,6 +64,21 @@ kubectl exec -n store1 deploy/store1-magento-php -- \
    之后可在 Argo UI 中看到 `demo`、`bdgy` 两个 Helm Release，点击 Sync 就会执行 `helm upgrade`。
 4. **注意事项**：自动同步默认不 prune（防止 PVC 被误删），如果需要在 Git 中删除资源，先手动确认对应数据卷已备份，再暂时允许 `prune`。
 
+## 队列消费者
+1. **默认覆盖范围**：`gitops/tenants/<site>/values-<site>.yaml` 的 `consumers.list` 现在预置了 `async.operations.all` 以及 `product_action_attribute.{update,website.update}`，对应 Deployment 会自动挂载 `generated/`、`var/di/` 卷并跟随站点镜像滚动更新。
+2. **添加新消费者**：按下列格式扩展列表即可：
+   ```yaml
+   consumers:
+     enabled: true
+     list:
+       - name: media-gallery
+         queue: media.gallery.synchronization
+         maxMessages: 200
+   ```
+   Helm 会生成 `deploy/<release>-magento-consumer-media-gallery`，无需单独写 manifests。
+3. **排障**：若 RabbitMQ 中 `messages_ready` 长时间 > 0，可先运行 `rabbitmqctl list_queues -p /<site> name messages_ready consumers` 确认队列名，再对照 `values-<site>.yaml` 是否已有对应 Deployment；必要时使用 `kubectl logs deploy/<release>-magento-consumer-...` 检查连接/权限。
+4. **KEDA 后续**：Chart 已内建 `keda.rabbitmq` 节点，可在站点 values 里设置 `keda.rabbitmq.enabled=true`、`queueName` 等参数，让 `async.operations.all` 随 backlog 自动扩缩。
+
 ## 生成物刷新（Composer + PVC）
 1. **Composer 排除 generated**：确保 `composer.json` 的 `autoload.exclude-from-classmap` 含 `generated/code/*`，避免 `composer dump` 把已删除的 Proxy 重新写入 classmap。
 2. **重新生成 autoload**（以 demo 为例）：

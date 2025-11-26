@@ -1,25 +1,64 @@
 image:
   web:
-    repository: registry.internal/kubemage/magento-web
-    tag: bdgy-0.1.0
+    repository: ghcr.io/ellistondow/kubemage-web
+    tag: bdgy-0.1.2
   php:
-    repository: registry.internal/kubemage/magento-php-fpm
-    tag: bdgy-0.1.0
+    repository: ghcr.io/ellistondow/kubemage-php
+    tag: bdgy-0.1.2
   cron:
-    repository: registry.internal/kubemage/magento-cron
-    tag: bdgy-0.1.0
+    repository: ghcr.io/ellistondow/kubemage-cron
+    tag: bdgy-0.1.2
 
 env:
   baseUrl: https://bdgy.k8s.bdgyoo.com
   mysqlHost: percona.databases.svc.cluster.local
   rabbitmqHost: rabbitmq.messaging.svc.cluster.local
   redisHost: valkey.cache.svc.cluster.local
-  mediaBucket: s3://kubemage-media/bdgy
-  openSearchHost: opensearch-http.search.svc.cluster.local
-  openSearchPort: 9210
+  mediaBucket: s3://bdgy-media
+  openSearchHost: opensearch.search.svc.cluster.local
+  openSearchPort: 9200
+
+remoteStorage:
+  driver: aws-s3
+  bucket: bdgy-media
+  region: us-east-1
+  prefix: media
+  endpoint: http://minio.object-storage.svc.cluster.local:9000
+  usePathStyle: true
 
 varnish:
-  configSecret: bdgy-varnish-vcl
+  configSecret: ""
+  purgeCIDRs:
+    - 10.0.0.0/8
+
+consumers:
+  enabled: true
+  list:
+    - name: async-bulk
+      queue: async.operations.all
+      maxMessages: 1000
+    - name: product-attr-update
+      queue: product_action_attribute.update
+      maxMessages: 500
+    - name: product-attr-website
+      queue: product_action_attribute.website.update
+      maxMessages: 500
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 128k
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "16"
+  hosts:
+    - host: bdgy.k8s.bdgyoo.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: bdgy-k8s-bdgyoo-com-tls
+      hosts:
+        - bdgy.k8s.bdgyoo.com
 
 redis:
   databases:
@@ -34,3 +73,5 @@ secrets:
   mysqlRoot: UGVyY29uYVJvb3QhMjAyNQ==
   rabbitmqPassword: bWFnZW50b1Bhc3M=
   redisPassword: cmVkaXNQYXNzMjAyNQ==
+  remoteStorageAccessKey: YmRneU1lZGlhVXNlcg==
+  remoteStorageSecretKey: QmRneU1lZGlhU2VjcmV0MjAyNSE=
