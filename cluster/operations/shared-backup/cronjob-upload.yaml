@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: shared-backup-upload
+  namespace: ops
+spec:
+  schedule: "30 3 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: uploader
+              image: minio/mc:RELEASE.2024-11-07T00-39-55Z
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  mc alias set shared "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+                  mc mb --ignore-existing shared/"$MINIO_BUCKET"
+                  mc mirror --overwrite /backups shared/"$MINIO_BUCKET"
+              envFrom:
+                - secretRef:
+                    name: shared-backup-secrets
+              volumeMounts:
+                - name: backup
+                  mountPath: /backups
+                  readOnly: true
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: shared-backup

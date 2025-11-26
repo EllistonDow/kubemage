@@ -13,3 +13,4 @@ resources:
   - secret.yaml
   - rbac.yaml
   - cronjob.yaml
+  - cronjob-upload.yaml
