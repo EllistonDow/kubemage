@@ -6,12 +6,22 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/EllistonDow/kubemage.git
-    targetRevision: main
-    path: platform/monitoring
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 62.3.0
     helm:
-      valueFiles:
-        - ../../cluster/phase2/monitoring/kube-prometheus-values.yaml
+      values: |
+        fullnameOverride: kubemage-monitor
+        namespaceOverride: monitoring
+        grafana:
+          adminPassword: Admin!2025
+        prometheus:
+          prometheusSpec:
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+        alertmanager:
+          alertmanagerSpec:
+            replicas: 1
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -19,3 +29,5 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
