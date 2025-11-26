@@ -121,6 +121,7 @@ kubectl exec -n store1 deploy/store1-magento-php -- \
 
 ## 常见问题
 - **首页被 `errors/2025` 404 缓存**：多出现在 Varnish 先返回 404、站点随后才完成 `setup:upgrade` 的窗口期。升级到最新版 Chart 并执行上面的 Ban 命令，可以即时抹掉旧对象；同样可以 `php bin/magento cache:flush full_page` 触发 Magento 自己的 BAN。
+- **/static/ 404 或后台无样式**：Chart 默认会创建 `*-pubstatic` PVC，并把 PHP/Web Pod 的 `/var/www/html/pub/static` 挂到该卷；若手动改过 Deployment 导致未挂载，或 Builder/keep-calm 没把静态文件同步到 PVC，就会出现 CSS/JS 404。解决办法：恢复 Helm 模板的 `volumeMounts`，然后运行 `scripts/magento-builder.sh <ns> <release> <php-image>`（记得设置 `MAGENTO_BUILD_STATIC=1`）让 `pub/static` 写入 PVC，最后重新同步 ArgoCD。
 - **部署卡在 Pending**：检查 Namespace ResourceQuota、PVC 是否绑定、Cilium NetworkPolicy。
 - **健康探针失败**：审查 FPM/Nginx 日志，确认 ENV/Secrets 是否正确。
 - **队列积压**：增加 Consumers、副本或调高 RabbitMQ limits。

@@ -24,6 +24,11 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "magento.fullname" . }}-env
+          {{- if .Values.storage.pubStatic.enabled }}
+          volumeMounts:
+            - name: pubstatic
+              mountPath: /var/www/html/pub/static
+          {{- end }}
           resources:
             {{- toYaml .Values.resources.web | nindent 12 }}
           livenessProbe:
@@ -38,3 +43,9 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
+      {{- if .Values.storage.pubStatic.enabled }}
+      volumes:
+        - name: pubstatic
+          persistentVolumeClaim:
+            claimName: {{ include "magento.fullname" . }}-pubstatic
+      {{- end }}

@@ -24,6 +24,21 @@ spec:
                 name: {{ include "magento.fullname" . }}-env
             - secretRef:
                 name: {{ include "magento.fullname" . }}-secrets
+          {{- if or (or .Values.storage.generated.enabled .Values.storage.varDi.enabled) .Values.storage.pubStatic.enabled }}
+          volumeMounts:
+            {{- if .Values.storage.generated.enabled }}
+            - name: generated
+              mountPath: /var/www/html/generated
+            {{- end }}
+            {{- if .Values.storage.varDi.enabled }}
+            - name: vardi
+              mountPath: /var/www/html/var/di
+            {{- end }}
+            {{- if .Values.storage.pubStatic.enabled }}
+            - name: pubstatic
+              mountPath: /var/www/html/pub/static
+            {{- end }}
+          {{- end }}
           ports:
             - containerPort: 9000
           resources:
@@ -36,3 +51,21 @@ spec:
             tcpSocket:
               port: 9000
             initialDelaySeconds: 10
+      {{- if or (or .Values.storage.generated.enabled .Values.storage.varDi.enabled) .Values.storage.pubStatic.enabled }}
+      volumes:
+        {{- if .Values.storage.generated.enabled }}
+        - name: generated
+          persistentVolumeClaim:
+            claimName: {{ include "magento.fullname" . }}-generated
+        {{- end }}
+        {{- if .Values.storage.varDi.enabled }}
+        - name: vardi
+          persistentVolumeClaim:
+            claimName: {{ include "magento.fullname" . }}-vardi
+        {{- end }}
+        {{- if .Values.storage.pubStatic.enabled }}
+        - name: pubstatic
+          persistentVolumeClaim:
+            claimName: {{ include "magento.fullname" . }}-pubstatic
+        {{- end }}
+      {{- end }}
