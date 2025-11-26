@@ -1,5 +1,12 @@
 # Magento 部署/回滚 Runbook
 
+## 快速 SOP
+1. **Builder Job**：每次 CI 构建或需要刷新静态资源时运行 `scripts/magento-builder.sh <namespace> <release> <php-image>`，事先导出 `MAGENTO_BUILD_STATIC=1`、`MAGENTO_STATIC_LOCALES="en_US zh_Hans_CN"` 等环境变量；Job 会把 `generated/`、`var/di/`、`pub/static/` 写回 PVC，滚动 Web/PHP Pod 后即可生效。
+2. **Keep Calm**：线上 CLI 操作统一使用 `scripts/magento-keep-calm.sh <namespace> <release>`，脚本包含 `maintenance → app:config:import → setup:upgrade → cache/indexer → queue`，并始终以 `www-data` 身份执行，避免 root 写入导致权限错乱。
+3. **静态卷巡检**：`kubectl exec -n <ns> deploy/<release>-magento-web -- ls /var/www/html/pub/static`，若目录为空或 `deployed_version.txt` 丢失，立即重新跑 Builder 并 `chown -R www-data:www-data pub/static var/view_preprocessed generated`。
+4. **远程媒资**：站点启用 MinIO 以后，完成 `php bin/magento remote-storage:sync` 并在 MinIO 控制台核对对象数量；日常只读缓存，所有上传均通过 S3 API 落盘。
+5. **GitOps 提交流程**：所有 Helm values、脚本改动都提交到 `kubemage` 仓库，`argocd app sync <site>` 让集群自动对齐；生产环境禁止直接 `kubectl apply` 不可追溯的 YAML。
+
 ## 首次部署
 1. **准备**：
    - 确认依赖命名空间与 Secrets（数据库、Valkey、RabbitMQ、S3）已就绪。
@@ -62,7 +69,8 @@ kubectl exec -n store1 deploy/store1-magento-php -- \
    kubectl apply -f gitops/platform/gitops/kubemage.yaml
    ```
    之后可在 Argo UI 中看到 `demo`、`bdgy` 两个 Helm Release，点击 Sync 就会执行 `helm upgrade`。
-4. **注意事项**：自动同步默认不 prune（防止 PVC 被误删），如果需要在 Git 中删除资源，先手动确认对应数据卷已备份，再暂时允许 `prune`。
+4. **注意事项**：自 2025‑11‑26 起 `gitops/tenants/<site>/application.yaml` 已启用 `prune`，同步时会清理不再存在于仓库的旧资源。若确需保留（例如手工调试 PVC），请在模板中为单个对象添加 `metadata.annotations: {"argocd.argoproj.io/sync-options": "Prune=false"}` 并记录原因。
+5. **共享依赖 GitOps 化**：计划把 `gitops/platform` 下的 Percona/OpenSearch/Valkey/RabbitMQ 统一交给 Operator（Percona Operator、OpenSearch Operator、Bitnami RabbitMQ、Valkey Operator），再用独立的 Argo Application（app-of-apps 模式）部署，站点只依赖 ClusterIP DNS；从而升级数据层无需触碰单个站点的 release。
 
 ## 队列消费者
 1. **默认覆盖范围**：`gitops/tenants/<site>/values-<site>.yaml` 的 `consumers.list` 现在预置了 `async.operations.all` 以及 `product_action_attribute.{update,website.update}`，对应 Deployment 会自动挂载 `generated/`、`var/di/` 卷并跟随站点镜像滚动更新。
@@ -125,6 +133,19 @@ kubectl exec -n store1 deploy/store1-magento-php -- \
 - **部署卡在 Pending**：检查 Namespace ResourceQuota、PVC 是否绑定、Cilium NetworkPolicy。
 - **健康探针失败**：审查 FPM/Nginx 日志，确认 ENV/Secrets 是否正确。
 - **队列积压**：增加 Consumers、副本或调高 RabbitMQ limits。
+
+## 新增站点/Namespace 模板
+1. 复制代码：`cp -r app/sites/demo app/sites/<site>`，清理媒体、var 等目录，只保留必要的 `app/etc`/`pub`/模块代码。
+2. 复制 Helm 值：`cp charts/magento/sites/demo-values.yaml charts/magento/sites/<site>-values.yaml`（或直接在 `gitops/tenants/<site>/values-<site>.yaml` 新建），修改 `image.*.tag`、`env.baseUrl`、`remoteStorage.*`、Redis 数据库编号及 Secrets。
+3. 创建 Argo Application：在 `gitops/tenants/<site>` 添加 `namespace.yaml`、`application.yaml`，`releaseName` 与 namespace 保持一致；`kubectl apply -f` 后等 Argo 建立 namespace、Helm release。
+4. 初始化 PVC：`MAGENTO_BUILD_STATIC=1 ./scripts/magento-builder.sh <ns> <release> <php-image>`，完成后执行 `scripts/magento-keep-calm.sh <ns> <release>`，确保配置导入和索引完成。
+5. 配置入口：在新 values 中增加 Ingress host/TLS，更新 DNS（例如 `<site>.k8s.bdgyoo.com` 指向现有 Ingress IP），验证 Varnish 缓存与证书。
+
+## 备份、监控与 MinIO
+1. **数据库/对象存储**：`scripts/shared-backup.sh` 支持 restic，读取 `.env` 中的 `RESTIC_REPOSITORY/RESTIC_PASSWORD`，对 Percona、MinIO bucket 定期备份；CronJob 化前可先由 CI 或手工运行。
+2. **OpenSearch 指标**：`scripts/shared-monitor.sh` 轮询 `_cluster/health`、`_cat/indices`，并预留将结果推送到 Alertmanager 的接口；计划在 Prometheus Operator 引入后转为 `ServiceMonitor` + Alert 规则。
+3. **MinIO 使用规范**：详见 `docs/runbooks/minio.md`，所有站点 `remote_storage.driver=aws-s3`，`endpoint` 指向 `http://minio.object-storage.svc.cluster.local:9000`，务必开启 bucket 版本化 + `mc ilm` 保护策略。
+4. **共享依赖 Operator 化**：下一阶段会把 Percona/OpenSearch/Valkey/RabbitMQ 的 YAML 替换为官方 Operator CR，结合 Argo 统一部署，以获得自动备份、故障自愈、监控指标等能力。
 
 ## 发布前检查表
 - [ ] 镜像扫描通过（Trivy）。

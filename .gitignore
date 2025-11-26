@@ -17,6 +17,7 @@ app/sites/*/pub/media/
 app/sites/*/generated/
 app/sites/*/vendor/
 app/sites/*/pub/errors/local.xml
+app/sites/*/dev/tests/integration/testsuite/Magento/**/_files/
 
 # Backup artifacts
 artifacts/shared-backups/*
