@@ -14,16 +14,18 @@ spec:
           restartPolicy: Never
           containers:
             - name: uploader
-              image: minio/mc:RELEASE.2024-11-07T00-39-55Z
+              image: dtzar/helm-kubectl:3.13.3
               imagePullPolicy: IfNotPresent
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -euo pipefail
-                  mc alias set shared "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
-                  mc mb --ignore-existing shared/"$MINIO_BUCKET"
-                  mc mirror --overwrite /backups shared/"$MINIO_BUCKET"
+                  curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
+                  chmod +x /tmp/mc
+                  /tmp/mc alias set shared "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+                  /tmp/mc mb --ignore-existing shared/"$MINIO_BUCKET"
+                  /tmp/mc mirror --overwrite /backups shared/"$MINIO_BUCKET"
               envFrom:
                 - secretRef:
                     name: shared-backup-secrets
