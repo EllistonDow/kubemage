@@ -26,6 +26,20 @@ remoteStorage:
   endpoint: http://minio.object-storage.svc.cluster.local:9000
   usePathStyle: true
 
+storage:
+  generated:
+    enabled: true
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  varDi:
+    enabled: true
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  pubStatic:
+    enabled: true
+    size: 4Gi
+    accessMode: ReadWriteOnce
+
 varnish:
   configSecret: ""
   purgeCIDRs:
@@ -48,8 +62,8 @@ ingress:
   enabled: true
   className: nginx
   annotations:
-    nginx.ingress.kubernetes.io/proxy-buffer-size: 128k
-    nginx.ingress.kubernetes.io/proxy-buffers-number: "16"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 512k
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "32"
   hosts:
     - host: bdgy.k8s.bdgyoo.com
       paths:
