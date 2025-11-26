@@ -4,4 +4,3 @@ namespace: demo
 resources:
   - namespace.yaml
   - application.yaml
-    valuesFile: values-demo.yaml
