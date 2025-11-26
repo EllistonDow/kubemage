@@ -14,7 +14,7 @@ spec:
         clusterName: kubemage-pxc
         secretsName: percona-secrets
         pxc:
-          size: 3
+          size: 1
           resources:
             requests:
               cpu: 500m
@@ -31,8 +31,7 @@ spec:
                 requests:
                   storage: 20Gi
         proxysql:
-          enabled: true
-          size: 1
+          enabled: false
         haproxy:
           enabled: false
         backup:
