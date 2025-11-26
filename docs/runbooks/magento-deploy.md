@@ -134,6 +134,27 @@ kubectl exec -n store1 deploy/store1-magento-php -- \
 - **健康探针失败**：审查 FPM/Nginx 日志，确认 ENV/Secrets 是否正确。
 - **队列积压**：增加 Consumers、副本或调高 RabbitMQ limits。
 
+## Percona → PXC 迁移步骤
+1. **导出旧实例**：
+   ```bash
+   kubectl exec -n databases percona-0 -- \
+     mysqldump -uroot -pPerconaRoot\!2025 --single-transaction --quick magento | gzip > artifacts/db-backup/magento_$(date +%Y%m%d).sql.gz
+   kubectl exec -n databases percona-0 -- \
+     mysqldump -uroot -pPerconaRoot\!2025 --single-transaction --quick bdgymage | gzip > artifacts/db-backup/bdgymage_$(date +%Y%m%d).sql.gz
+   ```
+2. **导入 PXC**（先把 `pxc_strict_mode` 暂时调成 `PERMISSIVE`）：
+   ```bash
+   PXC_POD=$(kubectl get pods -n databases -l app.kubernetes.io/component=pxc -o jsonpath='{.items[0].metadata.name}')
+   kubectl exec -n databases "$PXC_POD" -c pxc -- mysql -uroot -p'<new-root-pass>' -e "SET GLOBAL pxc_strict_mode=PERMISSIVE;"
+   gunzip -c artifacts/db-backup/magento_*.sql.gz | kubectl exec -i -n databases "$PXC_POD" -c pxc -- mysql -uroot -p'<new-root-pass>' magento
+   gunzip -c artifacts/db-backup/bdgymage_*.sql.gz | kubectl exec -i -n databases "$PXC_POD" -c pxc -- mysql -uroot -p'<new-root-pass>' bdgymage
+   kubectl exec -n databases "$PXC_POD" -c pxc -- mysql -uroot -p'<new-root-pass>' -e "SET GLOBAL pxc_strict_mode=ENFORCING;"
+   kubectl exec -n databases "$PXC_POD" -c pxc -- mysql -uroot -p'<new-root-pass>' -e "CREATE USER IF NOT EXISTS 'magento'@'%' IDENTIFIED BY 'Magento2025!'; GRANT ALL ON magento.* TO 'magento'@'%'; GRANT ALL ON bdgymage.* TO 'magento'@'%'; FLUSH PRIVILEGES;"
+   ```
+3. **切换 Service**：将 `percona` Service 的 selector 指向新 PXC Pod 标签（`app.kubernetes.io/component=pxc` 等），并 `kubectl scale sts/percona --replicas=0` 停掉旧实例。
+4. **验证**：在 demo/bdgy 的 PHP Pod 执行 `php -r '$pdo=new PDO("mysql:host=percona.databases.svc...`，确认能查询 `core_config_data`；备份脚本也会自动检测新的 Pod。
+5. **清理**：删除旧 StatefulSet/PVC，并把 `shared-backup-secrets` 中的 root 密码改为 PXC 的新值。
+
 ## 新增站点/Namespace 模板
 1. 复制代码：`cp -r app/sites/demo app/sites/<site>`，清理媒体、var 等目录，只保留必要的 `app/etc`/`pub`/模块代码。
 2. 复制 Helm 值：`cp charts/magento/sites/demo-values.yaml charts/magento/sites/<site>-values.yaml`（或直接在 `gitops/tenants/<site>/values-<site>.yaml` 新建），修改 `image.*.tag`、`env.baseUrl`、`remoteStorage.*`、Redis 数据库编号及 Secrets。
