@@ -1,20 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-self
+  name: bdgy
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/EllistonDow/kubemage.git
     targetRevision: main
-    path: platform/gitops
+    path: charts/magento
+    helm:
+      valueFiles:
+        - gitops/tenants/bdgy/values-bdgy.yaml
+      releaseName: bdgy
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: bdgy
   syncPolicy:
     automated:
-      prune: true
       selfHeal: true
     syncOptions:
+      - CreateNamespace=true
       - ApplyOutOfSyncOnly=true

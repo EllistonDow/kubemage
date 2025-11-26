@@ -21,6 +21,83 @@ kubectl exec -n store1 deploy/store1-magento-php -- \
    - Web 打开首页，操作购物车和结算。
    - RabbitMQ 队列消费正常，Elasticsearch/OpenSearch 搜索可用。
 
+## 远程存储（MinIO）
+1. **凭据下发**：在 `values-*.yaml` 中设置 `remoteStorage.*` 与 `secrets.remoteStorage*`，`helm template` 会把 `REMOTE_STORAGE_*` 环境变量注入 PHP/Cron/Builder Pod。
+2. **同步历史媒体**（每个站点都要执行一次）：
+   ```bash
+   kubectl exec -n demo deploy/demo-magento-php -- php bin/magento remote-storage:sync
+   kubectl exec -n bdgy deploy/bdgy-magento-php -- php bin/magento remote-storage:sync
+   ```
+3. **验证**：
+   ```bash
+   kubectl exec -n demo deploy/demo-magento-php -- php -r 'var_export((include "app/etc/env.php")['"'remote_storage'"']);'
+   # 期望 driver=aws-s3，bucket=demo-media，credentials=demoMediaUser 等
+   ```
+4. `pub/media` 改为只读缓存后，所有新上传的图片会直接写入 MinIO，配合 restic/Velero 即可做多站点共享备份。
+
+## Varnish & 缓存策略
+1. **集群内 Ban 白名单**：`values.yaml`/`values-<site>.yaml` 中的 `varnish.purgeCIDRs`（默认 `10.0.0.0/8`）会写入 `acl purge`。这样 PHP/Cron/Builder Pod 发起的 `PURGE` 就不会再因为源 IP 属于 Pod 网段而被 405 拒绝。
+2. **手工 Ban 示例**：
+   ```bash
+   # 方式 A：在 PHP Pod 直接调用 Varnish Service
+   kubectl exec -n bdgy deploy/bdgy-magento-php -- \
+     curl -X PURGE -H 'Host: bdgy.k8s.bdgyoo.com' \
+          -H 'X-Magento-Tags-Pattern: .*' \
+          http://varnish:6081/
+
+   # 方式 B：登录 Varnish Pod，针对域名 Ban
+   kubectl exec -n bdgy -it deploy/bdgy-magento-varnish -- \
+     varnishadm ban 'req.http.host == "bdgy.k8s.bdgyoo.com"'
+   ```
+3. **404 不再缓存**：`charts/magento/files/varnish/default.vcl` 把 404/5xx 响应标记为 `uncacheable`。即便站点在初始化过程中短暂抛出 `errors/2025`，Varnish 也不会把该页面缓存几小时；若仍看到旧页面，执行上面的 Ban 命令或 `php bin/magento cache:flush full_page` 即可。
+
+## Argo CD 集成
+1. **应用定义**：每个站点都在 `gitops/tenants/<site>/application.yaml` 里声明了 Argo CD `Application`（Helm 类型，路径 `charts/magento`），`valueFiles` 直接引用同目录下的 `values-<site>.yaml`。`syncPolicy` 默认开启 `selfHeal` 与 `CreateNamespace=true`，避免手工 `helm upgrade`。
+2. **基线资源**：`gitops/tenants/<site>/namespace.yaml` 保留 Namespace/Quota/LimitRange/NetworkPolicy，仍由 `kubemage` 根应用统一下发，防止 Argo Application 删除 PVC/命名空间。
+3. **引导流程**：
+   ```bash
+   kubectl apply -f gitops/tenants/demo/application.yaml
+   kubectl apply -f gitops/tenants/bdgy/application.yaml
+   # 根应用
+   kubectl apply -f gitops/platform/gitops/kubemage.yaml
+   ```
+   之后可在 Argo UI 中看到 `demo`、`bdgy` 两个 Helm Release，点击 Sync 就会执行 `helm upgrade`。
+4. **注意事项**：自动同步默认不 prune（防止 PVC 被误删），如果需要在 Git 中删除资源，先手动确认对应数据卷已备份，再暂时允许 `prune`。
+
+## 生成物刷新（Composer + PVC）
+1. **Composer 排除 generated**：确保 `composer.json` 的 `autoload.exclude-from-classmap` 含 `generated/code/*`，避免 `composer dump` 把已删除的 Proxy 重新写入 classmap。
+2. **重新生成 autoload**（以 demo 为例）：
+   ```bash
+   cd app/sites/demo
+   docker run --rm -v "$PWD":/var/www/html -w /var/www/html \
+     -e COMPOSER_ALLOW_SUPERUSER=1 composer:2.8 \
+     dump-autoload --no-dev --optimize
+   ```
+   bdgy 站点同理。操作后将 `composer.json` 与 `vendor/composer/*` 一并提交。
+3. **刷新 PVC 生成物**：
+   ```bash
+   MAGENTO_BUILDER_COMPILE=1 MAGENTO_BUILD_STATIC=1 \
+   MAGENTO_STATIC_LOCALES="en_US zh_Hans_CN" \
+   ./scripts/magento-builder.sh demo demo ghcr.io/ellistondow/kubemage-php:demo-0.1.2
+   ```
+   根据站点替换 namespace/release/image。Job 会先运行 `setup:upgrade` → `setup:di:compile` → `setup:static-content:deploy`，再把 `generated/`、`var/di/`、`pub/static/` 回写到 PVC（`*-generated`、`*-vardi`、`*-pubstatic`）。
+4. **验证**：
+   ```bash
+   kubectl exec -n demo deploy/demo-magento-php -- ls generated | head
+   kubectl exec -n demo deploy/demo-magento-php -- php bin/magento list | head
+   ```
+   若 CLI 能正常运行且前台资源不 404，即可重新开启 Cron/消费者。
+
+## 一键巡检（keep calm）
+在 Kubernetes 环境中执行整套「升级-清缓存-重建索引」命令，可直接使用 `scripts/magento-keep-calm.sh`：
+
+```bash
+./scripts/magento-keep-calm.sh demo demo
+./scripts/magento-keep-calm.sh bdgy bdgy --context kubemage-prod
+```
+
+脚本流程：maintenance:enable → app:config:import → setup:upgrade → cache:flush/cache:clean → indexer:reindex → queue:consumers:restart → maintenance:disable。若需附加 `kubectl` 参数（context、token 等）直接跟在 release 名称后。
+
 ## 回滚
 1. 找到上一版本 Helm release：`helm history store1 -n store1`。
 2. `helm rollback store1 <REVISION>`。
@@ -28,6 +105,7 @@ kubectl exec -n store1 deploy/store1-magento-php -- \
 4. 回滚完成后运行 `php bin/magento cache:flush`。
 
 ## 常见问题
+- **首页被 `errors/2025` 404 缓存**：多出现在 Varnish 先返回 404、站点随后才完成 `setup:upgrade` 的窗口期。升级到最新版 Chart 并执行上面的 Ban 命令，可以即时抹掉旧对象；同样可以 `php bin/magento cache:flush full_page` 触发 Magento 自己的 BAN。
 - **部署卡在 Pending**：检查 Namespace ResourceQuota、PVC 是否绑定、Cilium NetworkPolicy。
 - **健康探针失败**：审查 FPM/Nginx 日志，确认 ENV/Secrets 是否正确。
 - **队列积压**：增加 Consumers、副本或调高 RabbitMQ limits。

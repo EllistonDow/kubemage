@@ -1,20 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-self
+  name: monitoring
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/EllistonDow/kubemage.git
     targetRevision: main
-    path: platform/gitops
+    path: platform/monitoring
+    helm:
+      valueFiles:
+        - ../../cluster/phase2/monitoring/kube-prometheus-values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: monitoring
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-    syncOptions:
-      - ApplyOutOfSyncOnly=true
