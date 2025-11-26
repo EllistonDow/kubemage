@@ -11,7 +11,7 @@ spec:
     path: charts/magento
     helm:
       valueFiles:
-        - gitops/tenants/demo/values-demo.yaml
+        - ../../gitops/tenants/demo/values-demo.yaml
       releaseName: demo
   destination:
     server: https://kubernetes.default.svc

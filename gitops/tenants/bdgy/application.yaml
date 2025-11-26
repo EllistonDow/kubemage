@@ -11,7 +11,7 @@ spec:
     path: charts/magento
     helm:
       valueFiles:
-        - gitops/tenants/bdgy/values-bdgy.yaml
+        - ../../gitops/tenants/bdgy/values-bdgy.yaml
       releaseName: bdgy
   destination:
     server: https://kubernetes.default.svc
