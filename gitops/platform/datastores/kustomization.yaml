@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace-databases.yaml
+  - secret-percona-secrets.yaml
+  - percona-operator-app.yaml
+  - percona-cluster-app.yaml

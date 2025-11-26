@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: percona-cluster
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://percona.github.io/percona-helm-charts
+    chart: pxc-db
+    targetRevision: 1.13.0
+    helm:
+      values: |
+        clusterName: kubemage-pxc
+        secretsName: percona-secrets
+        pxc:
+          size: 3
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          volumeSpec:
+            persistentVolumeClaim:
+              storageClassName: local-path
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+        proxysql:
+          enabled: true
+          size: 1
+        haproxy:
+          enabled: false
+        backup:
+          enabled: false
+        logCollector:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: databases
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

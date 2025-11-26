@@ -5,3 +5,4 @@ resources:
   - kubemage.yaml
   - monitoring.yaml
   - gatekeeper.yaml
+  - datastores.yaml

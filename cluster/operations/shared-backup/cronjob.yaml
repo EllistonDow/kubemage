@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: shared-backup
+  namespace: ops
+spec:
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: shared-backup
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: bitnami/kubectl:1.30.3
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  chmod +x /opt/scripts/shared-backup.sh
+                  /opt/scripts/shared-backup.sh
+              env:
+                - name: BACKUP_ROOT
+                  value: /backups
+                - name: SNAPSHOT_ROOT
+                  value: /snapshots
+                - name: SHARED_BACKEND
+                  value: k8s
+                - name: PERCONA_NAMESPACE
+                  value: databases
+                - name: OPENSEARCH_NAMESPACE
+                  value: search
+                - name: OPENSEARCH_SELECTOR
+                  value: app=opensearch
+                - name: OPENSEARCH_ENDPOINT
+                  value: http://opensearch.search.svc.cluster.local:9200
+                - name: PERCONA_SELECTOR
+                  value: app=percona
+                - name: PERCONA_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: shared-backup-secrets
+                      key: PERCONA_ROOT_PASSWORD
+              volumeMounts:
+                - name: script
+                  mountPath: /opt/scripts
+                  readOnly: true
+                - name: backup
+                  mountPath: /backups
+                - name: snapshots
+                  mountPath: /snapshots
+          volumes:
+            - name: script
+              configMap:
+                name: shared-backup-script
+                defaultMode: 0755
+            - name: backup
+              persistentVolumeClaim:
+                claimName: shared-backup
+            - name: snapshots
+              persistentVolumeClaim:
+                claimName: shared-opensearch-snapshots
