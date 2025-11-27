@@ -8,6 +8,9 @@ image:
   cron:
     repository: registry.example.com/kubemage/magento-cron
     tag: latest
+  varnish:
+    repository: docker.io/library/varnish
+    tag: 7.6
   pullPolicy: IfNotPresent
 
 replicaCount:
@@ -21,9 +24,15 @@ service:
 
 varnish:
   enabled: true
-  service:
-    type: ClusterIP
-  configSecret: varnish-vcl
+  replicaCount: 2
+  serviceName: varnish
+  servicePort: 6081
+  backendPort: 8080
+  storage: "512m"
+  extraEnv: {}
+  configSecret: ""
+  purgeCIDRs:
+    - 10.0.0.0/8
 
 resources:
   web:
@@ -44,18 +53,33 @@ resources:
     requests:
       cpu: 200m
       memory: 512Mi
+  varnish:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
 
 env:
   baseUrl: https://store.example.com
-  mediaBucket: s3://kubemage-media/store
+  mediaBucket: s3://store-media
   rabbitmqHost: magento-mq.messaging.svc
   redisHost: valkey.cache.svc
   mysqlHost: magento-db-pxc.databases.svc
 
+remoteStorage:
+  driver: file
+  bucket: ""
+  region: ""
+  prefix: media
+  endpoint: http://minio.object-storage.svc.cluster.local:9000
+  usePathStyle: true
+
 cron:
   schedules:
     - name: main
-      schedule: "*/5 * * * *"
+      schedule: "* * * * *"
       command: ["/bin/bash", "-c", "php bin/magento cron:run"]
 
 consumers:
@@ -63,8 +87,6 @@ consumers:
   list:
     - name: async-bulk
       queue: async.operations.all
-    - name: email
-      queue: email.notifications
 
 hpa:
   web:
@@ -86,12 +108,27 @@ keda:
 ingress:
   enabled: true
   className: nginx
+  annotations: {}
   hosts:
     - host: store.example.com
       paths:
-        - path: /
-          pathType: Prefix
+      - path: /
+        pathType: Prefix
   tls:
     - secretName: store-tls
       hosts:
         - store.example.com
+
+storage:
+  generated:
+    enabled: true
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  varDi:
+    enabled: true
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  pubStatic:
+    enabled: true
+    size: 4Gi
+    accessMode: ReadWriteOnce
