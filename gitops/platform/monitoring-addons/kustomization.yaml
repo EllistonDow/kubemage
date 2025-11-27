@@ -7,4 +7,6 @@ resources:
   - rabbitmq-monitor.yaml
   - valkey-exporter.yaml
   - blackbox-exporter.yaml
+  - alertmanager-telegram-secret.yaml
+  - alertmanager-telegram-config.yaml
   - prometheus-rules.yaml

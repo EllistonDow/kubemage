@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: platform-telegram
+  namespace: monitoring
+  labels:
+    kubemage.io/component: alerting
+spec:
+  route:
+    receiver: telegram-platform
+    groupBy: ['alertname']
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+  receivers:
+    - name: telegram-platform
+      telegramConfigs:
+        - botToken:
+            name: alertmanager-telegram
+            key: token
+          chatID: 1171267236
+          parseMode: Markdown
+          sendResolved: true
+          message: |
+            [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+            {{ range .Alerts }}• {{ .Annotations.summary }} ({{ .Labels.severity }})
+              {{ .Annotations.description }}
+            {{ end }}
+            Source: {{ .ExternalURL }}
