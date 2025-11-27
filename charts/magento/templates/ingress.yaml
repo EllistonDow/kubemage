@@ -7,6 +7,9 @@ metadata:
     {{- include "magento.labels" . | nindent 4 }}
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: 200m
+    {{- range $key, $value := .Values.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   tls:
@@ -21,9 +24,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "magento.fullname" $ }}-web
+                name: {{ if $.Values.varnish.enabled }}{{ $.Values.varnish.serviceName | default "varnish" }}{{ else }}{{ include "magento.fullname" $ }}-web{{ end }}
                 port:
-                  number: {{ $.Values.service.port }}
+                  number: {{ if $.Values.varnish.enabled }}{{ $.Values.varnish.servicePort }}{{ else }}{{ $.Values.service.port }}{{ end }}
           {{- end }}
     {{- end }}
 {{- end }}

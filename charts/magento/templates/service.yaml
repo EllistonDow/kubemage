@@ -15,3 +15,37 @@ spec:
       name: http
   selector:
     app: {{ include "magento.fullname" . }}-web
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-fpm
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ include "magento.fullname" . }}-php
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: fastcgi
+{{- if .Values.varnish.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.varnish.serviceName | default "varnish" }}
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ include "magento.fullname" . }}-varnish
+  ports:
+    - port: {{ .Values.varnish.servicePort }}
+      targetPort: {{ .Values.varnish.servicePort }}
+      protocol: TCP
+      name: http
+{{- end }}
