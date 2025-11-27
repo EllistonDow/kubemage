@@ -1,0 +1,11 @@
+{{- if and .Values.varnish.enabled (not .Values.varnish.configSecret) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "magento.fullname" . }}-varnish-vcl
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+data:
+  default.vcl: |
+{{ tpl (.Files.Get "files/varnish/default.vcl") . | indent 4 }}
+{{- end }}

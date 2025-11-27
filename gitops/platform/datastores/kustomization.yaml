@@ -5,3 +5,4 @@ resources:
   - secret-percona-secrets.yaml
   - percona-operator-app.yaml
   - percona-cluster-app.yaml
+  - percona-grant-super-job.yaml

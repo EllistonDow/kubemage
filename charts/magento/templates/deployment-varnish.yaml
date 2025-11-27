@@ -1,0 +1,62 @@
+{{- if .Values.varnish.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "magento.fullname" . }}-varnish
+  labels:
+    {{- include "magento.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.varnish.replicaCount | default 2 }}
+  selector:
+    matchLabels:
+      app: {{ include "magento.fullname" . }}-varnish
+  template:
+    metadata:
+      labels:
+        app: {{ include "magento.fullname" . }}-varnish
+        {{- include "magento.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: varnish
+          image: "{{ .Values.image.varnish.repository }}:{{ .Values.image.varnish.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.varnish.servicePort }}
+              name: http
+          env:
+            - name: VARNISH_HTTP_PORT
+              value: "{{ .Values.varnish.servicePort }}"
+            - name: VARNISH_SIZE
+              value: "{{ .Values.varnish.storage }}"
+            {{- range $key, $value := .Values.varnish.extraEnv }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: varnish-vcl
+              mountPath: /etc/varnish/default.vcl
+              subPath: default.vcl
+          resources:
+            {{- toYaml .Values.resources.varnish | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: varnish-vcl
+          {{- if .Values.varnish.configSecret }}
+          secret:
+            secretName: {{ .Values.varnish.configSecret }}
+          {{- else }}
+          configMap:
+            name: {{ include "magento.fullname" . }}-varnish-vcl
+          {{- end }}
+{{- end }}
