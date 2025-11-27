@@ -11,7 +11,16 @@
   ```
 - **常见问题**：cron 队列阻塞会堆积在 `cron_schedule` 表，可通过 `select status, count(*) from cron_schedule group by 1;` 检查。
 
-## 2. 每日 Checklist
+## 2. 每小时 Spot Check（可由巡检脚本或值班执行）
+| 项目 | 操作 | 目标 |
+| --- | --- | --- |
+| Cron 最近运行 | `kubectl logs job/<site>-magento-cron-main-$(date +%Y%m%d%H%M) --tail=5` 或在 Loki 中检索 | 确认 60 分钟内没有失败行 |
+| Blackbox 探针 | 在 Alertmanager/Grafana 查看 `probe_success` | 任何 `demo-store`/`bdgy-store` 失败立即处理 |
+| 消费者健康 | `kubectl get pods -n <ns> -l app=<site>-magento-consumer-*` | 所有消费者 Pod Ready=1/1，无 CrashLoop |
+| 队列堆积 | `kubectl exec -n <ns> deploy/<site>-magento-php -- bin/magento queue:consumers:list` | `Messages` 长时间 >0 需要排查 |
+| 错误日志抽查 | `kubectl logs deploy/<site>-magento-web -n <ns> --tail=50 | grep -i error` | 快速发现 5xx/Redis/DB 异常 |
+
+## 3. 每日 Checklist
 | 项目 | 操作 | 说明 |
 | --- | --- | --- |
 | Cron 健康 | `kubectl logs job/<site>-magento-cron-main-<ts>` | 确认上一小时内至少执行 60 次，无报错 |
@@ -20,7 +29,7 @@
 | 备份 Cron | `kubectl get jobs -n ops -l job-name=shared-backup` | 03:00 的 FULL 备份、03:30 的上传任务应成功 |
 | Blackbox | 查看 Alertmanager 或 Grafana | `demo-store`/`bdgy-store` 探针无 5xx/超时 |
 
-## 3. 每周 Checklist
+## 4. 每周 Checklist
 1. **全量 reindex**：
    ```bash
    kubectl exec -n <ns> deploy/<site>-magento-php -- bin/magento indexer:reindex
@@ -29,7 +38,7 @@
 3. **媒体/MinIO**：对比 `pub/media` 与 MinIO Bucket 对象数（`mc du`），必要时 `php bin/magento remote-storage:sync`。
 4. **OpenSearch snapshot**：检查 `ops/shared-backup` CronJob 产物或通过 `_cat/snapshots` 确认成功。
 
-## 4. 每月 Checklist
+## 5. 每月 Checklist
 | 项目 | 操作 |
 | --- | --- |
 | 数据库优化 | `ANALYZE TABLE` / `OPTIMIZE TABLE` 针对日志/报表表，或使用 Percona Toolkit |
@@ -37,7 +46,7 @@
 | SSL & Base URL | 检查证书到期时间（`kubectl exec ingress-nginx ... openssl x509 -enddate`），确认 `base-url` 与 DNS 匹配 |
 | 站点验收 | 执行 smoke test：前台加载、搜索、下单；后台登录、订单列表、产品编辑 |
 
-## 5. 应急/Keep-Calm 脚本
+## 6. 应急/Keep-Calm 脚本
 当遇到缓存损坏或 500 错误，可执行 `scripts/magento-keep-calm.sh`（或手动运行以下清单）：
 ```bash
 php bin/magento maintenance:enable
@@ -51,12 +60,12 @@ php bin/magento maintenance:disable
 ```
 在 Kubernetes 中可通过 `kubectl exec -n <ns> deploy/<site>-magento-php -- bash -c '<commands>'` 执行。
 
-## 6. 备份与恢复要点
+## 7. 备份与恢复要点
 - **Percona**：`shared-backup` CronJob 03:00 执行 `mysqldump`，文件写入 `/backups/percona` 并同步到 MinIO `s3://demo-media/backups/<date>/`。
 - **OpenSearch**：`shared-backup` CronJob 创建临时 snapshot repository，并上传 tar 包到 `/backups/opensearch`。
 - **媒体**：MinIO 作为主存储，站点 Pod 启动时会将 `pub/media` 挂载到 PVC（如需恢复，先同步 MinIO -> PVC）。
 
-## 7. 监控与告警
+## 8. 监控与告警
 - Prometheus 通过 kube-prometheus-stack 收集 Kubernetes / Magento 依赖指标，黑盒 exporter 负责站点 5xx/超时。
 - Alertmanager 配置了 Telegram receiver（`team=platform`），下列告警必须响应：`StoreEndpointDown/Slow`、`SharedBackupJobFailed`、`RabbitMQQueueBacklog`、`ValkeyMemoryPressure`、`PrometheusRuleFailures`。
 
