@@ -4,5 +4,8 @@ resources:
   - argocd.yaml
   - kubemage.yaml
   - monitoring.yaml
+  - monitoring-addons.yaml
+  - monitoring-crds.yaml
   - gatekeeper.yaml
+  - gatekeeper-policies.yaml
   - datastores.yaml
