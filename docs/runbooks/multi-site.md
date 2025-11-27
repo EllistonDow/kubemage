@@ -217,6 +217,7 @@ Edge 逻辑由 Ingress Controller、WAF（Nginx/ModSecurity）、Gateway API 来
 额外的异地副本：
 - `CronJob/ops/shared-backup-upload`（每天 03:30）使用 `mc mirror` 将 `/backups` 同步到 `s3://shared-backup/`（MinIO）。
 - `CronJob/ops/shared-backup-dropbox`（每天 04:00）通过 `hostPath` 将 `/backups` rsync 到宿主机 `~/Dropbox/kubemage/shared-backup/`，由 Dropbox 客户端继续上传云端。
+- 站点级数据库：`CronJob/ops/demo-db-backup`（每小时 00 分）与 `CronJob/ops/bdgy-db-backup`（每小时 05 分）分别对 `magento`、`bdgymage` 数据库 `mysqldump`→MinIO `backups/hourly/<site>/`，并通过 `--older-than 168h` 机制保留最近 **7 天**。
 
 备份产物可直接用来回滚：
 

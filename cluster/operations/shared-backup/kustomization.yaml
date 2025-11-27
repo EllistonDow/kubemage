@@ -15,3 +15,4 @@ resources:
   - cronjob.yaml
   - cronjob-upload.yaml
   - cronjob-dropbox.yaml
+  - cronjob-site-db.yaml

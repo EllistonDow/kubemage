@@ -1,0 +1,111 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: demo-db-backup
+  namespace: ops
+spec:
+  schedule: "0 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: db-backup
+              image: alpine:3.20
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: SITE_NAME
+                  value: demo
+                - name: DB_NAME
+                  value: magento
+                - name: MYSQL_HOST
+                  value: percona.databases.svc.cluster.local
+                - name: RETENTION_HOURS
+                  value: "168"
+                - name: MINIO_DEST_SUBPATH
+                  value: hourly/demo
+              envFrom:
+                - secretRef:
+                    name: shared-backup-secrets
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] [$SITE_NAME] $*"; }
+                  apk add --no-cache mysql-client curl >/dev/null
+                  curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
+                  chmod +x /tmp/mc
+                  export MYSQL_PWD="$PERCONA_ROOT_PASSWORD"
+                  TS="$(date +%Y%m%d_%H%M%S)"
+                  FILE="${SITE_NAME}_${TS}.sql.gz"
+                  log "开始导出 $DB_NAME"
+                  mysqldump -h "$MYSQL_HOST" -uroot "$DB_NAME" --single-transaction --quick --routines --events --triggers | gzip -c >"/tmp/${FILE}"
+                  /tmp/mc alias set backup "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+                  DEST="backup/$MINIO_BUCKET/$MINIO_PREFIX/$MINIO_DEST_SUBPATH"
+                  log "上传 ${FILE} → $DEST"
+                  /tmp/mc mb --ignore-existing "$DEST" >/dev/null 2>&1 || true
+                  /tmp/mc cp "/tmp/${FILE}" "$DEST/${FILE}"
+                  log "清理超过 ${RETENTION_HOURS}h 的历史备份"
+                  /tmp/mc rm --recursive --force --older-than "${RETENTION_HOURS}h" "$DEST" || true
+                  rm -f "/tmp/${FILE}"
+                  log "完成"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bdgy-db-backup
+  namespace: ops
+spec:
+  schedule: "5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: db-backup
+              image: alpine:3.20
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: SITE_NAME
+                  value: bdgy
+                - name: DB_NAME
+                  value: bdgymage
+                - name: MYSQL_HOST
+                  value: percona.databases.svc.cluster.local
+                - name: RETENTION_HOURS
+                  value: "168"
+                - name: MINIO_DEST_SUBPATH
+                  value: hourly/bdgy
+              envFrom:
+                - secretRef:
+                    name: shared-backup-secrets
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] [$SITE_NAME] $*"; }
+                  apk add --no-cache mysql-client curl >/dev/null
+                  curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
+                  chmod +x /tmp/mc
+                  export MYSQL_PWD="$PERCONA_ROOT_PASSWORD"
+                  TS="$(date +%Y%m%d_%H%M%S)"
+                  FILE="${SITE_NAME}_${TS}.sql.gz"
+                  log "开始导出 $DB_NAME"
+                  mysqldump -h "$MYSQL_HOST" -uroot "$DB_NAME" --single-transaction --quick --routines --events --triggers | gzip -c >"/tmp/${FILE}"
+                  /tmp/mc alias set backup "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+                  DEST="backup/$MINIO_BUCKET/$MINIO_PREFIX/$MINIO_DEST_SUBPATH"
+                  log "上传 ${FILE} → $DEST"
+                  /tmp/mc mb --ignore-existing "$DEST" >/dev/null 2>&1 || true
+                  /tmp/mc cp "/tmp/${FILE}" "$DEST/${FILE}"
+                  log "清理超过 ${RETENTION_HOURS}h 的历史备份"
+                  /tmp/mc rm --recursive --force --older-than "${RETENTION_HOURS}h" "$DEST" || true
+                  rm -f "/tmp/${FILE}"
+                  log "完成"
