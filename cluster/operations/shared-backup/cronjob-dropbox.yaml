@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: shared-backup-dropbox
+  namespace: ops
+spec:
+  schedule: "0 4 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: dropbox-sync
+              image: alpine:3.20
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] $*"; }
+                  apk add --no-cache rsync >/dev/null
+                  TARGET="/dropbox"
+                  mkdir -p "$TARGET"
+                  log "rsync /backups → $TARGET"
+                  rsync -av --delete /backups/ "$TARGET/"
+                  chown -R 1000:1000 "$TARGET"
+                  log "Dropbox 同步完成"
+              volumeMounts:
+                - name: backup
+                  mountPath: /backups
+                  readOnly: true
+                - name: dropbox
+                  mountPath: /dropbox
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: shared-backup
+            - name: dropbox
+              hostPath:
+                path: /home/doge/Dropbox/kubemage/shared-backup
+                type: DirectoryOrCreate

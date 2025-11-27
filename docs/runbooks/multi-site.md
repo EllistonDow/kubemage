@@ -209,14 +209,18 @@ Edge 逻辑由 Ingress Controller、WAF（Nginx/ModSecurity）、Gateway API 来
 
 | 场景 | 命令 | 说明 |
 | --- | --- | --- |
-| 手工/定时备份 | `./scripts/shared-backup.sh` | 默认输出到 `artifacts/shared-backups/`，包含 `percona_*.sql.gz` 与 `opensearch_*.tar.gz`。内部逻辑：mysqldump 全库备份 + OpenSearch FS snapshot（通过 `docker exec $OPENSEARCH_CONTAINER curl ...` 调用 API，不暴露宿主端口）。可通过 `BACKUP_ROOT`、`PERCONA_ROOT_PASSWORD`、`OPENSEARCH_CONTAINER`、`OPENSEARCH_ENDPOINT`、`BACKUP_RETENTION_DAYS` (默认 7 天) 覆盖。建议 crontab：`0 3 * * * BACKUP_RETENTION_DAYS=14 /home/doge/kubemage/scripts/shared-backup.sh >> /var/log/kubemage-backup.log 2>&1`. |
-| 健康检查/集成监控 | `./scripts/shared-monitor.sh` | 校验 `percona` 容器可用、输出关键指标（Uptime/Threads_connected 等），同时通过 `docker exec $OPENSEARCH_CONTAINER curl ...` 抓取 OpenSearch `_cluster/health` 与 `_cat/nodes`。若检测到 OpenSearch `status=red` 则退出码为 2，方便接入 Prometheus `node_exporter`/cron 报警。可通过 `PERCONA_CONTAINER`、`PERCONA_ROOT_PASSWORD`、`OPENSEARCH_CONTAINER`、`OPENSEARCH_ENDPOINT` 变量定制。 |
+| 手工/定时备份 | `./scripts/shared-backup.sh` | 默认输出到 `artifacts/shared-backups/`，生成 `percona_*.sql.gz` 与 `opensearch_*.tar.gz`。脚本支持 `SHARED_BACKEND=k8s|docker` 自动切换：在 K8s 中会通过 `kubectl exec -n databases/sts percona`、`kubectl exec -n search opensearch` 串流 `mysqldump` 与 OpenSearch FS snapshot，再打包到本机；在 docker 模式下沿用 `docker exec`。可用变量：`BACKUP_ROOT`、`BACKUP_RETENTION_DAYS`、`PERCONA_ROOT_PASSWORD`、`PERCONA_NAMESPACE`/`PERCONA_SELECTOR`、`OPENSEARCH_NAMESPACE`/`OPENSEARCH_SELECTOR`、`OPENSEARCH_ENDPOINT`。示例：`0 3 * * * SHARED_BACKEND=k8s BACKUP_RETENTION_DAYS=14 /home/doge/kubemage/scripts/shared-backup.sh >> /var/log/kubemage-backup.log 2>&1`。 |
+| 健康检查/集成监控 | `./scripts/shared-monitor.sh` | 与备份脚本共用 `SHARED_BACKEND` 机制：自动从 docker 或 K8s Pod 抓取 `mysqladmin ping`、`SHOW GLOBAL STATUS`、`du -sh /var/lib/mysql`、OpenSearch `_cluster/health`、`_cat/nodes`。若 OpenSearch 返回 `status=red` 则退出码为 2，方便纳入 cron/Prometheus 告警。常用变量：`PERCONA_ROOT_PASSWORD`、`PERCONA_NAMESPACE`、`OPENSEARCH_NAMESPACE`、`OPENSEARCH_ENDPOINT`。 |
 
-> OpenSearch 快照目录绑定到 `artifacts/opensearch-snapshots/`（参见 `infra/shared/docker-compose.yml`），脚本会以 `snap_<timestamp>` 为单位创建临时仓库、生成快照并打包压缩，随后自动清理快照仓库，确保存储空间可控。
+> 脚本优先尝试创建 `snap_<timestamp>` FS snapshot 并串流 `opensearch_<timestamp>.tar.gz`，若集群未配置 `path.repo` 则自动降级为直接打包 `/usr/share/opensearch/data`，至少可以保留单节点数据文件备份。
+
+额外的异地副本：
+- `CronJob/ops/shared-backup-upload`（每天 03:30）使用 `mc mirror` 将 `/backups` 同步到 `s3://shared-backup/`（MinIO）。
+- `CronJob/ops/shared-backup-dropbox`（每天 04:00）通过 `hostPath` 将 `/backups` rsync 到宿主机 `~/Dropbox/kubemage/shared-backup/`，由 Dropbox 客户端继续上传云端。
 
 备份产物可直接用来回滚：
 
-1. **Percona**：`zcat artifacts/shared-backups/percona/percona_<ts>.sql.gz | docker exec -i percona mysql -uroot -p...`。
-2. **OpenSearch**：解压 `opensearch_<ts>.tar.gz` 至 `artifacts/opensearch-snapshots/`，重新注册仓库后执行 `POST /_snapshot/<repo>/full/_restore`。
+1. **Percona**：`zcat artifacts/shared-backups/percona/percona_<ts>.sql.gz | docker exec -i percona mysql -uroot -p...`（K8s 可改为 `kubectl exec -i -n databases percona-0 -- mysql -uroot -p...`）。
+2. **OpenSearch**：解压 `opensearch_<ts>.tar.gz`，将目录上传至 `opensearch` Pod (`kubectl exec ... -- tar -C /usr/share/opensearch/snapshots -xf -`)，然后重新注册仓库并执行 `POST /_snapshot/<repo>/full/_restore`。
 
 建议在 Prometheus/Alertmanager 中订阅 `shared-monitor.sh` 的输出（或通过 `systemd`/`cron` 发送到 `logger`），并在任意站点部署/升级前执行一次 `shared-backup.sh` 形成可回滚快照。

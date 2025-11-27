@@ -21,6 +21,7 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
+                  log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] $*"; }
                   curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
                   chmod +x /tmp/mc
                   /tmp/mc alias set shared "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
@@ -28,7 +29,9 @@ spec:
                   if [ -n "${MINIO_PREFIX:-}" ] && [ "$MINIO_PREFIX" != "/" ]; then
                     DEST="$DEST/$MINIO_PREFIX"
                   fi
+                  log "开始同步 /backups → $DEST"
                   /tmp/mc mirror --overwrite /backups "$DEST"
+                  log "共享备份上传完成"
               envFrom:
                 - secretRef:
                     name: shared-backup-secrets

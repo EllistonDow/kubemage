@@ -14,3 +14,4 @@ resources:
   - rbac.yaml
   - cronjob.yaml
   - cronjob-upload.yaml
+  - cronjob-dropbox.yaml
