@@ -57,6 +57,60 @@ consumers:
     - name: product-attr-website
       queue: product_action_attribute.website.update
       maxMessages: 500
+    - name: catalog-website-attr-sync
+      queue: catalog_website_attribute_value_sync
+      maxMessages: 500
+    - name: export-processor
+      queue: exportProcessor
+      maxMessages: 200
+    - name: inventory-mass-update
+      queue: inventory.mass.update
+      maxMessages: 500
+    - name: inventory-source-items-cleanup
+      queue: inventory.source.items.cleanup
+      maxMessages: 200
+    - name: inventory-reservations-update
+      queue: inventory.reservations.update
+      maxMessages: 500
+    - name: inventory-reservations-cleanup
+      queue: inventory.reservations.cleanup
+      maxMessages: 200
+    - name: inventory-reservations-update-salability
+      queue: inventory.reservations.updateSalabilityStatus
+      maxMessages: 200
+    - name: inventory-indexer-source
+      queue: inventory.indexer.sourceItem
+      maxMessages: 500
+    - name: inventory-indexer-stock
+      queue: inventory.indexer.stock
+      maxMessages: 500
+    - name: media-image-resize
+      queue: media.storage.catalog.image.resize
+      maxMessages: 200
+    - name: media-content-sync
+      queue: media.content.synchronization
+      maxMessages: 200
+    - name: media-gallery-sync
+      queue: media.gallery.synchronization
+      maxMessages: 200
+    - name: media-gallery-renditions
+      queue: media.gallery.renditions.update
+      maxMessages: 200
+    - name: sales-rule-quote
+      queue: sales.rule.quote.trigger.recollect
+      maxMessages: 200
+    - name: sales-rule-coupon
+      queue: sales.rule.update.coupon.usage
+      maxMessages: 200
+    - name: product-alert
+      queue: product_alert
+      maxMessages: 200
+    - name: save-config
+      queue: saveConfigProcessor
+      maxMessages: 200
+    - name: codegenerator
+      queue: codegeneratorProcessor
+      maxMessages: 200
 
 ingress:
   enabled: true
