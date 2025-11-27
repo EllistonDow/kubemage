@@ -15,6 +15,9 @@ spec:
         secretsName: percona-secrets
         pxc:
           size: 1
+          configuration: |
+            [mysqld]
+            pxc_strict_mode=PERMISSIVE
           resources:
             requests:
               cpu: 500m

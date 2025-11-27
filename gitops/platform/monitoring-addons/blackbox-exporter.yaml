@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-config
+  namespace: monitoring
+  labels:
+    kubemage.io/component: blackbox
+    app.kubernetes.io/name: blackbox-exporter
+  
+data:
+  blackbox.yml: |-
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 10s
+        http:
+          method: GET
+          valid_http_versions: ["HTTP/1.1", "HTTP/2"]
+          preferred_ip_protocol: "ip4"
+          tls_config:
+            insecure_skip_verify: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    kubemage.io/component: blackbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blackbox-exporter
+        kubemage.io/component: blackbox
+    spec:
+      containers:
+        - name: blackbox-exporter
+          image: prom/blackbox-exporter:v0.24.0
+          args:
+            - --config.file=/etc/blackbox/blackbox.yml
+          ports:
+            - name: http
+              containerPort: 9115
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    kubemage.io/component: blackbox
+spec:
+  ports:
+    - name: http
+      port: 9115
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: blackbox-exporter
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: demo-store-probe
+  namespace: monitoring
+  labels:
+    kubemage.io/component: blackbox
+spec:
+  jobName: demo-store
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  interval: 1m
+  targets:
+    staticConfig:
+      static:
+        - https://magento.k8s.bdgyoo.com
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: bdgy-store-probe
+  namespace: monitoring
+  labels:
+    kubemage.io/component: blackbox
+spec:
+  jobName: bdgy-store
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  interval: 1m
+  targets:
+    staticConfig:
+      static:
+        - https://bdgy.k8s.bdgyoo.com

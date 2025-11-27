@@ -1,0 +1,146 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubemage-shared-services
+  namespace: monitoring
+  labels:
+    kubemage.io/component: shared-services
+spec:
+  groups:
+    - name: percona.rules
+      rules:
+        - alert: PerconaInstanceDown
+          expr: mysql_up{namespace="databases"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Percona exporter无法访问实例"
+            description: "mysqld-exporter 无法连接 PXC（namespace {{ $labels.namespace }}，pod {{ $labels.pod }}）。请检查 percona-cluster 与网络。"
+        - alert: PerconaHighLatency
+          expr: avg_over_time(mysql_global_status_threads_connected{namespace="databases"}[5m]) > 200
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Percona 连接数持续上升"
+            description: "PXC 当前连接数 {{ $value }} 超过阈值 200。请确认是否有异常流量。"
+    - name: opensearch.rules
+      rules:
+        - alert: OpenSearchClusterRed
+          expr: opensearch_cluster_health_status{color="red"} > 0
+          for: 1m
+          labels:
+            severity: critical
+            team: search
+          annotations:
+            summary: "OpenSearch 集群 Red"
+            description: "集群状态变为 RED，无法满足读写。请检查 search namespace 的 opensearch StatefulSet。"
+        - alert: OpenSearchClusterYellow
+          expr: opensearch_cluster_health_status{color="yellow"} > 0
+          for: 10m
+          labels:
+            severity: warning
+            team: search
+          annotations:
+            summary: "OpenSearch 集群 Yellow"
+            description: "OpenSearch 集群长时间保持 YELLOW 状态，副本未全部分配。"
+    - name: minio.rules
+      rules:
+        - alert: MinioFreeSpaceLow
+          expr: (minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_total_bytes) < 0.15
+          for: 5m
+          labels:
+            severity: warning
+            team: storage
+          annotations:
+            summary: "MinIO 可用容量低"
+            description: "MinIO 剩余容量不足 15%。请扩容 local-path 存储或清理旧对象。"
+    - name: rabbitmq.rules
+      rules:
+        - alert: RabbitMQNodeDown
+          expr: rabbitmq_up{namespace="messaging"} < 1
+          for: 2m
+          labels:
+            severity: critical
+            team: messaging
+          annotations:
+            summary: "RabbitMQ 不可用"
+            description: "RabbitMQ exporter 无法连接实例。请检查 rabbitmq StatefulSet。"
+        - alert: RabbitMQQueueBacklog
+          expr: max(rabbitmq_queue_messages_ready{queue!~"amq\\..*"}) > 5000
+          for: 10m
+          labels:
+            severity: warning
+            team: messaging
+          annotations:
+            summary: "RabbitMQ 队列堆积"
+            description: "业务队列存在超过 5000 条待处理消息，请确认 consumers 是否正常。"
+    - name: valkey.rules
+      rules:
+        - alert: ValkeyExporterDown
+          expr: redis_up{namespace="cache"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: cache
+          annotations:
+            summary: "Valkey exporter 无法连接实例"
+            description: "redis_exporter 无法访问 redis://valkey.cache.svc:6379。"
+        - alert: ValkeyMemoryPressure
+          expr: redis_memory_used_bytes / clamp_min(redis_memory_max_bytes, 1) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            team: cache
+          annotations:
+            summary: "Valkey 内存使用 >80%"
+            description: "Valkey 使用内存 {{ printf \"%.2f\" $value }} 超过限制的 80%。请扩容或优化缓存策略。"
+    - name: shared-backup.rules
+      rules:
+        - alert: SharedBackupJobFailed
+          expr: increase(kube_job_status_failed{namespace="ops",job_name=~"shared-backup.*"}[1h]) > 0
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "共享备份 Job 失败"
+            description: "Ops 命名空间的 shared-backup CronJob 最近 1 小时内失败。请查看 job 日志。"
+        - alert: SharedBackupUploadFailed
+          expr: increase(kube_job_status_failed{namespace="ops",job_name=~"shared-backup-upload.*"}[1h]) > 0
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "MinIO 上传失败"
+            description: "shared-backup-upload CronJob 最近 1 小时出现失败记录，备份可能未同步到 MinIO。"
+        - alert: SharedBackupNotRun
+          expr: (time() - kube_cronjob_status_last_schedule_time{namespace="ops",cronjob="shared-backup"}) > 86400
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "共享备份超过 24h 未执行"
+            description: "shared-backup CronJob 超过 24 小时没有调度记录，请确认 CronJob 状态。"
+    - name: blackbox.rules
+      rules:
+        - alert: StoreEndpointDown
+          expr: probe_success{job=~"demo-store|bdgy-store"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "站点不可访问 ({{ $labels.job }})"
+            description: "Blackbox 探测 {{ $labels.instance }} 连续 2 分钟失败，可能返回 5xx 或超时。请检查 Ingress / Magento Web。"
+        - alert: StoreEndpointSlow
+          expr: probe_duration_seconds{job=~"demo-store|bdgy-store"} > 3
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "站点响应时间过长 ({{ $labels.job }})"
+            description: "Blackbox 探测 {{ $labels.instance }} 耗时 {{ $value | printf \"%.2f\" }} 秒，超过 3 秒阈值。"
