@@ -3,3 +3,6 @@ kind: Kustomization
 resources:
   - ../../../../cluster/phase2/security/gatekeeper-pss-template.yaml
   - ../../../../cluster/phase2/security/gatekeeper-pss-constraint.yaml
+patchesStrategicMerge:
+  - patch-template.yaml
+  - patch-constraint.yaml

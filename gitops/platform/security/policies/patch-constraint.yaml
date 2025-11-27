@@ -1,0 +1,7 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSP
+metadata:
+  name: pod-must-run-as-nonroot
+  namespace: gatekeeper-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
