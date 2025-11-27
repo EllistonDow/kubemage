@@ -21,7 +21,22 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
+                  JOB_NAME="shared-backup-upload"
                   log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] $*"; }
+                  notify() {
+                    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+                      return
+                    fi
+                    if ! command -v curl >/dev/null 2>&1; then
+                      echo "[${JOB_NAME}] curl 不存在，跳过 Telegram 通知" >&2
+                      return
+                    fi
+                    local text="$1"
+                    curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                      -d chat_id="${TELEGRAM_CHAT_ID}" \
+                      -d text="$text" >/dev/null || true
+                  }
+                  trap 'notify "❌ [${JOB_NAME}] 上传失败 (exit $?) at $(date -u +%F_%T)"; exit 1' ERR
                   curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
                   chmod +x /tmp/mc
                   /tmp/mc alias set shared "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
@@ -32,6 +47,7 @@ spec:
                   log "开始同步 /backups → $DEST"
                   /tmp/mc mirror --overwrite /backups "$DEST"
                   log "共享备份上传完成"
+                  notify "✅ [${JOB_NAME}] 完成 at $(date -u +%F_%T)"
               envFrom:
                 - secretRef:
                     name: shared-backup-secrets

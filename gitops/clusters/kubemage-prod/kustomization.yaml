@@ -3,10 +3,6 @@ kind: Kustomization
 resources:
   # TODO: infra overlay blocked until cluster/phase1 manifests are converted to valid resources
   # - ../../infra/overlays/prod
-  - ../../platform/gitops/argocd.yaml
-  - ../../platform/gitops/monitoring.yaml
-  - ../../platform/gitops/gatekeeper.yaml
-  - ../../platform/gitops/datastores.yaml
   - ../../../cluster/operations/shared-backup
   # - ../../tenants/store1
   - ../../tenants/demo

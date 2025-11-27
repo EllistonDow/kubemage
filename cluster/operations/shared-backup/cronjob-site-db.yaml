@@ -35,7 +35,22 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
+                  JOB_NAME="${SITE_NAME}-db-backup"
                   log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] [$SITE_NAME] $*"; }
+                  notify() {
+                    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+                      return
+                    fi
+                    if ! command -v curl >/dev/null 2>&1; then
+                      echo "[${JOB_NAME}] curl 不存在，跳过 Telegram 通知" >&2
+                      return
+                    fi
+                    local text="$1"
+                    curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                      -d chat_id="${TELEGRAM_CHAT_ID}" \
+                      -d text="$text" >/dev/null || true
+                  }
+                  trap 'notify "❌ [${JOB_NAME}] 失败 (exit $?) at $(date -u +%F_%T)"; exit 1' ERR
                   apk add --no-cache mysql-client curl >/dev/null
                   curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
                   chmod +x /tmp/mc
@@ -53,6 +68,7 @@ spec:
                   /tmp/mc rm --recursive --force --older-than "${RETENTION_HOURS}h" "$DEST" || true
                   rm -f "/tmp/${FILE}"
                   log "完成"
+                  notify "✅ [${JOB_NAME}] 完成 at $(date -u +%F_%T)"
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -91,7 +107,22 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
+                  JOB_NAME="${SITE_NAME}-db-backup"
                   log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] [$SITE_NAME] $*"; }
+                  notify() {
+                    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+                      return
+                    fi
+                    if ! command -v curl >/dev/null 2>&1; then
+                      echo "[${JOB_NAME}] curl 不存在，跳过 Telegram 通知" >&2
+                      return
+                    fi
+                    local text="$1"
+                    curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                      -d chat_id="${TELEGRAM_CHAT_ID}" \
+                      -d text="$text" >/dev/null || true
+                  }
+                  trap 'notify "❌ [${JOB_NAME}] 失败 (exit $?) at $(date -u +%F_%T)"; exit 1' ERR
                   apk add --no-cache mysql-client curl >/dev/null
                   curl -sSfL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
                   chmod +x /tmp/mc
@@ -109,3 +140,4 @@ spec:
                   /tmp/mc rm --recursive --force --older-than "${RETENTION_HOURS}h" "$DEST" || true
                   rm -f "/tmp/${FILE}"
                   log "完成"
+                  notify "✅ [${JOB_NAME}] 完成 at $(date -u +%F_%T)"

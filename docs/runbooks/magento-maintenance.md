@@ -47,7 +47,7 @@
 | 站点验收 | 执行 smoke test：前台加载、搜索、下单；后台登录、订单列表、产品编辑 |
 
 ## 6. 应急/Keep-Calm 脚本
-当遇到缓存损坏或 500 错误，可执行 `scripts/magento-keep-calm.sh`（或手动运行以下清单）：
+当遇到缓存损坏或 500 错误，可执行 `scripts/magento-keep-calm.sh <namespace> <release>`（脚本会自动通过 `kubectl exec` 在 PHP Deployment 中串行执行下列命令，也可手动运行以便定制）：
 ```bash
 php bin/magento maintenance:enable
 rm -rf generated/* var/{cache,page_cache,view_preprocessed,di}/* pub/static/*
@@ -70,3 +70,32 @@ php bin/magento maintenance:disable
 - Alertmanager 配置了 Telegram receiver（`team=platform`），下列告警必须响应：`StoreEndpointDown/Slow`、`SharedBackupJobFailed`、`RabbitMQQueueBacklog`、`ValkeyMemoryPressure`、`PrometheusRuleFailures`。
 
 > 建议在每次正式上线前，把“每日 Checklist”跑一遍，并在周/月维护窗口中记录执行结果（可写入 ops runbook 或 issue）。
+
+## 9. 远程存储 / MinIO 运维
+- **变量来源**：Helm values 中的 `remoteStorage.*` 与 `secrets.remoteStorage*` 会注入 `REMOTE_STORAGE_*` 环境变量，`app/etc/env.php` 启动时将其写入 Magento 配置（驱动 `aws-s3` + `minio` endpoint）。
+- **常用命令**：
+  ```bash
+  # 校验是否启用远程存储
+  kubectl exec -n <ns> deploy/<site>-magento-php -- php bin/magento remote-storage:info
+
+  # 重新同步 pub/media → MinIO
+  kubectl exec -n <ns> deploy/<site>-magento-php -- php bin/magento remote-storage:sync
+
+  # 从 MinIO 端检查对象
+  mc alias set kubemage http://minio.object-storage.svc.cluster.local:9000 $REMOTE_STORAGE_ACCESS_KEY $REMOTE_STORAGE_SECRET_KEY
+  mc tree kubemage/<bucket>/media | head
+  ```
+- **排错要点**：若后台无法加载图片，先确认 `REMOTE_STORAGE_USE_PATH_STYLE=true`，再检查 `mc ls` 是否能列出对象；必要时执行一次 `remote-storage:sync` 并关注 Cron/消费者日志里是否有 `media.content.synchronization` 队列堆积。
+
+## 10. Varnish / FPC 操作
+- **启用方式**：在站点 Helm values (`gitops/tenants/<site>/values-*.yaml`) 中设置 `varnish.enabled: true` 并指定 `varnish.purgeCIDRs`，Argo 同步后会额外生成 `Deployment`/`Service varnish`，Ingress 直接指向 Varnish。
+- **运行检查**：
+  ```bash
+  kubectl get svc -n <ns> <site>-magento-varnish
+  kubectl logs -n <ns> deploy/<site>-magento-varnish --tail=50
+  kubectl exec -n <ns> deploy/<site>-magento-web -- varnishlog -q 'RespStatus >= 500'
+  ```
+- **常用操作**：
+  - 手动清缓存：`kubectl exec -n <ns> deploy/<site>-magento-web -- varnishadm ban 'req.url ~ .'`.
+  - Magento 后台关闭 FPC：`Stores > Configuration > Advanced > System > Full Page Cache` 改为 `Varnish Cache`，并确保 `backend_port`、`access_list` 与 Helm 输出一致。
+- **注意事项**：Varnish 只缓住匿名请求，若菜单/区块丢失，请确认 `varnish.vcl` 中的 `esi`、`X-Magento-Tags` 是否正常，并确保 `bin/magento cache:flush` 后调用 `varnishadm ban` 让缓存生效。
