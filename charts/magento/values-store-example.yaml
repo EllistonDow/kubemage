@@ -12,10 +12,20 @@ image:
 
 env:
   baseUrl: https://store1.example.com
-  mediaBucket: s3://kubemage-media/store1
+  mediaBucket: s3://store1-media
   rabbitmqHost: magento-mq.messaging.svc.cluster.local
   redisHost: valkey-master.cache.svc.cluster.local
   mysqlHost: magento-db-pxc.databases.svc.cluster.local
+  openSearchHost: opensearch.search.svc.cluster.local
+  openSearchPort: 9200
+
+remoteStorage:
+  driver: aws-s3
+  bucket: store1-media
+  region: us-east-1
+  prefix: media
+  endpoint: http://minio.object-storage.svc.cluster.local:9000
+  usePathStyle: true
 
 secrets:
   mysqlUser: {{ "bXlfc3RvcmU=" }}
@@ -23,6 +33,8 @@ secrets:
   mysqlRoot: {{ "cm9vdHNlY3JldA==" }}
   rabbitmqPassword: {{ "cmFiYml0" }}
   redisPassword: {{ "cmVkaXM=" }}
+  remoteStorageAccessKey: {{ "QUtJQUpWTUVEQUtJ" }}
+  remoteStorageSecretKey: {{ "U2VjdXJlU2VjcmV0S2V5" }}
 
 cron:
   schedules:
@@ -32,14 +44,18 @@ cron:
 
 consumers:
   enabled: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
   list:
     - name: async
       queue: async.operations.all
       replicas: 2
       maxMessages: 100
-    - name: email
-      queue: email.notifications
-      replicas: 1
 
 keda:
   rabbitmq:

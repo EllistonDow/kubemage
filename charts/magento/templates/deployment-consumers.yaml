@@ -1,38 +1,64 @@
 {{- if .Values.consumers.enabled }}
+{{- $root := . }}
+{{- $consumerResources := default .Values.resources.php .Values.consumers.resources }}
 {{- range .Values.consumers.list }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "magento.fullname" $ }}-consumer-{{ .name }}
+  name: {{ include "magento.fullname" $root }}-consumer-{{ .name }}
   labels:
-    {{- include "magento.labels" $ | nindent 4 }}
+    {{- include "magento.labels" $root | nindent 4 }}
 spec:
   replicas: {{ .replicas | default 1 }}
   selector:
     matchLabels:
-      app: {{ include "magento.fullname" $ }}-consumer-{{ .name }}
+      app: {{ include "magento.fullname" $root }}-consumer-{{ .name }}
   template:
     metadata:
       labels:
-        app: {{ include "magento.fullname" $ }}-consumer-{{ .name }}
-        {{- include "magento.labels" $ | nindent 8 }}
+        app: {{ include "magento.fullname" $root }}-consumer-{{ .name }}
+        {{- include "magento.labels" $root | nindent 8 }}
     spec:
       containers:
         - name: consumer
-          image: "{{ $.Values.image.php.repository }}:{{ $.Values.image.php.tag }}"
-          imagePullPolicy: {{ $.Values.image.pullPolicy }}
-          command:
+          image: "{{ $root.Values.image.php.repository }}:{{ $root.Values.image.php.tag }}"
+          imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+          args:
             - /bin/bash
             - -c
             - >-
               php bin/magento queue:consumers:start {{ .queue }} --single-thread --max-messages={{ .maxMessages | default 1000 }}
           envFrom:
             - configMapRef:
-                name: {{ include "magento.fullname" $ }}-env
+                name: {{ include "magento.fullname" $root }}-env
             - secretRef:
-                name: {{ include "magento.fullname" $ }}-secrets
+                name: {{ include "magento.fullname" $root }}-secrets
+          {{- if or $root.Values.storage.generated.enabled $root.Values.storage.varDi.enabled }}
+          volumeMounts:
+            {{- if $root.Values.storage.generated.enabled }}
+            - name: generated
+              mountPath: /var/www/html/generated
+            {{- end }}
+            {{- if $root.Values.storage.varDi.enabled }}
+            - name: vardi
+              mountPath: /var/www/html/var/di
+            {{- end }}
+          {{- end }}
           resources:
-            {{- toYaml ( .resources | default $.Values.resources.php ) | nindent 12 }}
+            {{- toYaml ( default $consumerResources .resources ) | nindent 12 }}
+      {{- if or $root.Values.storage.generated.enabled $root.Values.storage.varDi.enabled }}
+      volumes:
+        {{- if $root.Values.storage.generated.enabled }}
+        - name: generated
+          persistentVolumeClaim:
+            claimName: {{ include "magento.fullname" $root }}-generated
+        {{- end }}
+        {{- if $root.Values.storage.varDi.enabled }}
+        - name: vardi
+          persistentVolumeClaim:
+            claimName: {{ include "magento.fullname" $root }}-vardi
+        {{- end }}
+      {{- end }}
 ---
 {{- end }}
 {{- end }}
