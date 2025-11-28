@@ -6,6 +6,7 @@ resources:
   - monitoring.yaml
   - monitoring-addons.yaml
   - monitoring-crds.yaml
+  - dashboard-ingress.yaml
   - gatekeeper.yaml
   - gatekeeper-policies.yaml
   - datastores.yaml
