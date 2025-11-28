@@ -65,6 +65,7 @@
 - [MinIO 共享对象存储](docs/runbooks/minio.md)
 - [Google PageSpeed / Lighthouse CI](docs/runbooks/pagespeed.md)
 - [新站点上架流程](docs/runbooks/site-onboarding.md)
+- [SOPS/Secrets 管理](docs/runbooks/sops.md)
 - `scripts/magento-builder.sh`：在集群内生成 `generated/`/`pub/static`。
 - `scripts/magento-keep-calm.sh`：一键维护模式 + upgrade + reindex。
 - `scripts/pagespeed.sh`：配合 `.github/workflows/pagespeed.yml` 触发 PSI/LHCI 报表。
