@@ -13,7 +13,7 @@ spec:
       values: |
         clusterName: kubemage-pxc
         secretsName: percona-secrets
-        allowUnsafeConfig: true
+        allowUnsafeConfigurations: true
         pxc:
           size: 1
           configuration: |
