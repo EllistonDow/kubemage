@@ -20,11 +20,11 @@ spec:
               image: "{{ $.Values.image.cron.repository }}:{{ $.Values.image.cron.tag }}"
               imagePullPolicy: {{ $.Values.image.pullPolicy }}
               args: {{ .command | toJson }}
-                envFrom:
-                  - configMapRef:
-                      name: {{ include "magento.fullname" $ }}-env
-                  - secretRef:
-                      name: {{ include "magento.secretsName" $ }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "magento.fullname" $ }}-env
+                - secretRef:
+                    name: {{ include "magento.secretsName" $ }}
               {{- if or $.Values.storage.generated.enabled $.Values.storage.varDi.enabled }}
               volumeMounts:
                 {{- if $.Values.storage.generated.enabled }}
