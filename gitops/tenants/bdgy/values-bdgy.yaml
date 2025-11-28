@@ -4,10 +4,10 @@ image:
     tag: bdgy-0.1.3
   php:
     repository: ghcr.io/ellistondow/kubemage-php
-    tag: bdgy-0.1.2
+    tag: bdgy-0.1.3
   cron:
     repository: ghcr.io/ellistondow/kubemage-cron
-    tag: bdgy-0.1.2
+    tag: bdgy-0.1.3
 
 env:
   baseUrl: https://bdgy.k8s.bdgyoo.com
@@ -139,10 +139,5 @@ redis:
     page_cache: 5
 
 secrets:
-  mysqlUser: bWFnZW50bw==
-  mysqlPassword: TWFnZW50bzIwMjUh
-  mysqlRoot: UGVyY29uYVJvb3QhMjAyNQ==
-  rabbitmqPassword: bWFnZW50b1Bhc3M=
-  redisPassword: cmVkaXNQYXNzMjAyNQ==
-  remoteStorageAccessKey: YmRneU1lZGlhVXNlcg==
-  remoteStorageSecretKey: QmRneU1lZGlhU2VjcmV0MjAyNSE=
+  create: false
+  name: bdgy-magento-secrets

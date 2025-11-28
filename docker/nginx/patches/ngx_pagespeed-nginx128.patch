@@ -1,0 +1,83 @@
+--- a/src/ngx_pagespeed.cc
++++ b/src/ngx_pagespeed.cc
+@@ -403,6 +403,33 @@
+     }
+   }
+ 
++#if (nginx_version >= 1027000)
++  ngx_table_elt_t* cc = r->headers_out.cache_control;
++
++  if (cc == NULL) {
++    cc = static_cast<ngx_table_elt_t*>(
++        ngx_list_push(&r->headers_out.headers));
++    if (cc == NULL) {
++      return NGX_ERROR;
++    }
++
++    r->headers_out.cache_control = cc;
++    cc->next = NULL;
++    cc->hash = 1;
++    ngx_str_set(&cc->key, "Cache-Control");
++
++  } else {
++    for (ngx_table_elt_t* h = cc->next; h; h = h->next) {
++      h->hash = 0;
++    }
++
++    cc->next = NULL;
++    cc->hash = 1;
++  }
++
++  cc->value.len = strlen(cache_control);
++  cc->value.data = reinterpret_cast<u_char*>(cache_control);
++#else
+   // Now add our new cache control header.
+   if (r->headers_out.cache_control.elts == NULL) {
+     ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
+@@ -426,6 +453,7 @@
+   cache_control_headers[0]->value.len = strlen(cache_control);
+   cache_control_headers[0]->value.data =
+       reinterpret_cast<u_char*>(cache_control);
++#endif
+ 
+   return NGX_OK;
+ }
+@@ -433,6 +461,30 @@
+ // Returns false if the header wasn't found.  Otherwise sets cache_control and
+ // returns true;
+ bool ps_get_cache_control(ngx_http_request_t* r, GoogleString* cache_control) {
++#if (nginx_version >= 1027000)
++  ngx_table_elt_t* cc = r->headers_out.cache_control;
++  if (cc == nullptr) {
++    return false;  // Header not present.
++  }
++
++  bool first_segment = true;
++  for (ngx_table_elt_t* h = cc; h != NULL; h = h->next) {
++    if (h->hash == 0) {
++      continue;
++    }
++
++    if (first_segment) {
++      first_segment = false;
++    } else {
++      cache_control->append(", ");
++    }
++
++    cache_control->append(reinterpret_cast<char*>(h->value.data),
++                          h->value.len);
++  }
++
++  return !first_segment;
++#else
+   // Use headers_out.cache_control instead of looking for Cache-Control in
+   // headers_out.headers, because if an upstream sent multiple Cache-Control
+   // headers they're already combined in headers_out.cache_control.
+@@ -454,6 +506,7 @@
+                           ccp[i]->value.len);
+   }
+   return true;
++#endif
+ }
+ 
+ template<class Headers>

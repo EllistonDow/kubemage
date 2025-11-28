@@ -27,7 +27,7 @@ spec:
             - configMapRef:
                 name: {{ include "magento.fullname" . }}-env
             - secretRef:
-                name: {{ include "magento.fullname" . }}-secrets
+                name: {{ include "magento.secretsName" . }}
           {{- if or (or ($generated.enabled | default false) ($varDi.enabled | default false)) ($pubStatic.enabled | default false) }}
           volumeMounts:
             {{- if ($generated.enabled | default false) }}

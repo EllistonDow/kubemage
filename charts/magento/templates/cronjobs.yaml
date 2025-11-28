@@ -19,13 +19,37 @@ spec:
             - name: cron
               image: "{{ $.Values.image.cron.repository }}:{{ $.Values.image.cron.tag }}"
               imagePullPolicy: {{ $.Values.image.pullPolicy }}
-              command: {{ .command | toJson }}
-              envFrom:
-                - configMapRef:
-                    name: {{ include "magento.fullname" $ }}-env
-                - secretRef:
-                    name: {{ include "magento.fullname" $ }}-secrets
+              args: {{ .command | toJson }}
+                envFrom:
+                  - configMapRef:
+                      name: {{ include "magento.fullname" $ }}-env
+                  - secretRef:
+                      name: {{ include "magento.secretsName" $ }}
+              {{- if or $.Values.storage.generated.enabled $.Values.storage.varDi.enabled }}
+              volumeMounts:
+                {{- if $.Values.storage.generated.enabled }}
+                - name: generated
+                  mountPath: /var/www/html/generated
+                {{- end }}
+                {{- if $.Values.storage.varDi.enabled }}
+                - name: vardi
+                  mountPath: /var/www/html/var/di
+                {{- end }}
+              {{- end }}
               resources:
                 {{- toYaml $.Values.resources.cron | nindent 16 }}
+          {{- if or $.Values.storage.generated.enabled $.Values.storage.varDi.enabled }}
+          volumes:
+            {{- if $.Values.storage.generated.enabled }}
+            - name: generated
+              persistentVolumeClaim:
+                claimName: {{ include "magento.fullname" $ }}-generated
+            {{- end }}
+            {{- if $.Values.storage.varDi.enabled }}
+            - name: vardi
+              persistentVolumeClaim:
+                claimName: {{ include "magento.fullname" $ }}-vardi
+            {{- end }}
+          {{- end }}
 ---
 {{- end }}

@@ -22,3 +22,11 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- define "magento.chart" -}}
 {{ printf "%s-%s" .Chart.Name .Chart.Version | trunc 63 | trimSuffix "-" }}
 {{- end -}}
+
+{{- define "magento.secretsName" -}}
+{{- if and .Values.secrets (hasKey .Values.secrets "name") (.Values.secrets.name) -}}
+{{- .Values.secrets.name -}}
+{{- else -}}
+{{- printf "%s-secrets" (include "magento.fullname" .) -}}
+{{- end -}}
+{{- end -}}

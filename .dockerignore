@@ -1,0 +1,38 @@
+# VCS and metadata
+.git
+.gitignore
+.gitattributes
+.gitmodules
+
+# CI / docs / infra assets that should not affect container builds
+artifacts/
+charts/
+cluster/
+docs/
+infra/
+scripts/
+sops/
+
+# Local dependencies and caches
+node_modules/
+vendor/bundle/
+*.log
+*.tmp
+
+# Magento runtime caches (regenerate during container start)
+app/sites/*/var/cache/**
+app/sites/*/var/page_cache/**
+app/sites/*/var/view_preprocessed/**
+app/sites/*/var/session/**
+app/sites/*/var/report/**
+app/sites/*/var/log/**
+app/sites/*/var/.regenerate*
+app/sites/*/var/di/**
+app/sites/*/generated/**
+app/sites/*/pub/static/frontend/**
+app/sites/*/pub/static/adminhtml/**
+app/sites/*/pub/static/_cache/**
+app/sites/*/pub/static/deployed_version.txt
+app/sites/*/pub/media/catalog/product/cache/**
+app/sites/*/pub/media/tmp/**
+app/sites/*/pub/media/import/**

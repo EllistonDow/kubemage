@@ -18,6 +18,10 @@ replicaCount:
   php: 2
   varnish: 2
 
+web:
+  pagespeed:
+    enabled: true
+
 service:
   type: ClusterIP
   port: 8080
@@ -199,3 +203,14 @@ storage:
     enabled: true
     size: 4Gi
     accessMode: ReadWriteOnce
+
+secrets:
+  create: true
+  name: ""
+  mysqlUser: magento
+  mysqlPassword: changeme
+  mysqlRoot: changeme-root
+  rabbitmqPassword: changeme-rmq
+  redisPassword: changeme-redis
+  remoteStorageAccessKey: ""
+  remoteStorageSecretKey: ""

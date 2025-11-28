@@ -29,10 +29,10 @@ spec:
             - >-
               php bin/magento queue:consumers:start {{ .queue }} --single-thread --max-messages={{ .maxMessages | default 1000 }}
           envFrom:
-            - configMapRef:
-                name: {{ include "magento.fullname" $root }}-env
-            - secretRef:
-                name: {{ include "magento.fullname" $root }}-secrets
+              - configMapRef:
+                  name: {{ include "magento.fullname" $root }}-env
+              - secretRef:
+                  name: {{ include "magento.secretsName" $root }}
           {{- if or $root.Values.storage.generated.enabled $root.Values.storage.varDi.enabled }}
           volumeMounts:
             {{- if $root.Values.storage.generated.enabled }}
