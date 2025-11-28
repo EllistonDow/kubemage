@@ -19,18 +19,3 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
-  ignoreDifferences:
-    - group: ""
-      kind: Secret
-      namespace: demo
-      name: demo-magento-secrets
-      jsonPointers:
-        - /data
-        - /stringData
-    - group: ""
-      kind: Secret
-      namespace: bdgy
-      name: bdgy-magento-secrets
-      jsonPointers:
-        - /data
-        - /stringData

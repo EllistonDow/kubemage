@@ -4,4 +4,3 @@ namespace: demo
 resources:
   - namespace.yaml
   - application.yaml
-  - secrets.enc.yaml

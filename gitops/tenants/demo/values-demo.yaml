@@ -140,5 +140,12 @@ redis:
     page_cache: 11
 
 secrets:
-  create: false
+  create: true
   name: demo-magento-secrets
+  mysqlUser: ENC[AES256_GCM,data:+d5/Wqxz8Q==,iv:3zjHU3s5bT+DjU5K5MOD5iFPKuHh1RIdLjBNHaAiAwg=,tag:pTOaAt3BNNdMyaTPzQjxTw==,type:str]
+  mysqlPassword: ENC[AES256_GCM,data:A4J6hnh9j7UTAKPT,iv:yO2BkyNa7ppBZqSYZeuaYsHRjLqq2BanDWbo9JZm2CU=,tag:U2NvastI54SB6rIOTPJrKg==,type:str]
+  mysqlRoot: ENC[AES256_GCM,data:A8HmVCrtZswy3O/xWEOwyQ==,iv:Z0/L+i87Fq56tmvEQW2GGeyaIK05Tk9E3xYNoQBSvlA=,tag:v/Idw1EbChq9Z4GsFsbWkQ==,type:str]
+  rabbitmqPassword: ENC[AES256_GCM,data:SUCtU8/jDQz/Xdg=,iv:frL9P+53W5KkQJgoAvo2tldw+3luUA4l9xcQBBupd04=,tag:mlGaRQrb/GkjoI393TciMQ==,type:str]
+  redisPassword: ENC[AES256_GCM,data:0etCaCW7OgUhh8qI+Q==,iv:Z3InGG2ZwH1KSYyUckEHIXgFd0fVU5I8TbskIyKV12M=,tag:6mC2z3rR7NBCQcvro9EGHw==,type:str]
+  remoteStorageAccessKey: ENC[AES256_GCM,data:1sg96LsgZc0BszbLjA==,iv:GefuU8Q410Z3N7tbGjc0IZOJfD3emSN4iggHF6Mq438=,tag:rFgMMlRpYJaTpPwUg+oxlA==,type:str]
+  remoteStorageSecretKey: ENC[AES256_GCM,data:A+AjBTbcNluxa0jNwuPgqM/f/pc=,iv:Y7fuQ6sbl4F4km3faogfoHyPZPS+w36r5VScwTyvGCU=,tag:B2BI07C39P5CRVI802qWnA==,type:str]
