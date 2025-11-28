@@ -18,7 +18,17 @@ spec:
       }] {
         input.review.kind.kind == "Pod"
         container := input.review.object.spec.containers[_]
-        not container.securityContext.runAsNonRoot
+        not container_allows_nonroot(container)
         msg := sprintf("container %v must runAsNonRoot", [container.name])
         missing := "runAsNonRoot"
+      }
+
+      container_allows_nonroot(container) {
+        sc := object.get(container, "securityContext", {})
+        object.get(sc, "runAsNonRoot", false)
+      }
+
+      container_allows_nonroot(container) {
+        pod_sc := object.get(input.review.object.spec, "securityContext", {})
+        object.get(pod_sc, "runAsNonRoot", false)
       }
