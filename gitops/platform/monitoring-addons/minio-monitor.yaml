@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: minio-cluster
+  namespace: monitoring
+  labels:
+    kubemage.io/component: minio
+spec:
+  selector:
+    matchLabels:
+      app: minio
+      release: minio
+  namespaceSelector:
+    matchNames:
+      - object-storage
+  endpoints:
+    - port: http
+      path: /minio/v2/metrics/cluster
+      interval: 30s
+      scrapeTimeout: 10s

@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: percona-metrics-config
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: percona-metrics-exporter
+type: Opaque
+stringData:
+  .my.cnf: |-
+    [client]
+    user=monitor
+    password=MonitorPass!2025
+    host=percona-cluster-pxc-d-pxc
+    port=3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: percona-metrics-exporter
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: percona-metrics-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: percona-metrics-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: percona-metrics-exporter
+        kubemage.io/component: percona
+    spec:
+      containers:
+        - name: mysqld-exporter
+          image: prom/mysqld-exporter:v0.15.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --web.listen-address=:9104
+            - --config.my-cnf=/etc/mysql-exporter/.my.cnf
+            - --collect.info_schema.processlist
+            - --collect.perf_schema.eventsstatements
+          ports:
+            - name: metrics
+              containerPort: 9104
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mysql-exporter
+              readOnly: true
+      volumes:
+        - name: config
+          secret:
+            secretName: percona-metrics-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: percona-metrics
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: percona-metrics-exporter
+spec:
+  ports:
+    - name: metrics
+      port: 9104
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: percona-metrics-exporter
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: percona-metrics
+  namespace: monitoring
+  labels:
+    kubemage.io/component: percona
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: percona-metrics-exporter
+  namespaceSelector:
+    matchNames:
+      - databases
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s

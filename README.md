@@ -61,6 +61,14 @@
 2. 评估是否引入轻量虚拟化以拆分控制面；若需要，制定 VM 资源划分表。
 3. 建立 GitOps 仓库骨架并接入 Argo CD，随后进入 Phase 1 具体实施。
 
+## Runbooks & 自助脚本
+- [MinIO 共享对象存储](docs/runbooks/minio.md)
+- [Google PageSpeed / Lighthouse CI](docs/runbooks/pagespeed.md)
+- [新站点上架流程](docs/runbooks/site-onboarding.md)
+- `scripts/magento-builder.sh`：在集群内生成 `generated/`/`pub/static`。
+- `scripts/magento-keep-calm.sh`：一键维护模式 + upgrade + reindex。
+- `scripts/pagespeed.sh`：配合 `.github/workflows/pagespeed.yml` 触发 PSI/LHCI 报表。
+
 ## 仓库结构速览
 - `app/sites/<site>`：每个站点一套完整的 Magento 代码（当前演示站位于 `app/sites/demo`）。后续引入新站点时，复制 `demo` 目录并在 CI/Helm 中指定对应的 `SITE`/镜像标签即可。
 - `docker/`、`Dockerfile.*`：Web/PHP/Cron 镜像构建所用的配置与 Dockerfile，已经支持 `SITE_PATH` 构建参数。

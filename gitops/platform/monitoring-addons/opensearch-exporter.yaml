@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensearch-exporter
+  namespace: search
+  labels:
+    app.kubernetes.io/name: opensearch-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opensearch-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opensearch-exporter
+        kubemage.io/component: opensearch
+    spec:
+      containers:
+        - name: exporter
+          image: quay.io/prometheuscommunity/elasticsearch-exporter:v1.7.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --es.uri=http://opensearch.search.svc.cluster.local:9200
+            - --es.all
+            - --es.indices
+            - --es.timeout=20s
+            - --log.format=json
+          ports:
+            - name: metrics
+              containerPort: 9114
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch-exporter
+  namespace: search
+  labels:
+    app.kubernetes.io/name: opensearch-exporter
+spec:
+  ports:
+    - name: metrics
+      port: 9114
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: opensearch-exporter
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: opensearch-exporter
+  namespace: monitoring
+  labels:
+    kubemage.io/component: opensearch
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opensearch-exporter
+  namespaceSelector:
+    matchNames:
+      - search
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s

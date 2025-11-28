@@ -1,0 +1,49 @@
+name: PageSpeed Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Space or newline separated list of URLs"
+        required: true
+        default: |
+          https://magento.k8s.bdgyoo.com/
+      method:
+        description: "psi (default) or node"
+        required: true
+        default: psi
+      runs:
+        description: "Number of Lighthouse runs per URL"
+        required: true
+        default: '3'
+      psi_strategy:
+        description: "PSI strategy when method=psi (mobile/desktop)"
+        required: false
+        default: mobile
+jobs:
+  pagespeed:
+    runs-on: ubuntu-latest
+    env:
+      PAGESPEED_ENABLED: "true"
+      PAGESPEED_URLS: ${{ inputs.urls }}
+      PAGESPEED_METHOD: ${{ inputs.method }}
+      PAGESPEED_RUNS: ${{ inputs.runs }}
+      PAGESPEED_PSI_STRATEGY: ${{ inputs.psi_strategy }}
+      PAGESPEED_PSI_API_KEY: ${{ secrets.PAGESPEED_PSI_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Lighthouse CI
+        run: ./scripts/pagespeed.sh
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: pagespeed-${{ github.run_id }}
+          path: artifacts/pagespeed

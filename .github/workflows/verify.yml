@@ -1,0 +1,32 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.2
+      - name: Helm lint
+        run: helm lint charts/magento
+      - name: Render demo values
+        run: helm template demo charts/magento -f gitops/tenants/demo/values-demo.yaml > /tmp/demo.yaml
+      - name: Render bdgy values
+        run: helm template bdgy charts/magento -f gitops/tenants/bdgy/values-bdgy.yaml > /tmp/bdgy.yaml
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint scripts
+        run: |
+          shellcheck scripts/magento-builder.sh scripts/magento-keep-calm.sh scripts/pagespeed.sh docker/magento/entrypoint.sh docker/nginx/entrypoint.sh

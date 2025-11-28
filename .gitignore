@@ -25,8 +25,14 @@ artifacts/shared-backups/*
 artifacts/opensearch-snapshots/*
 !artifacts/opensearch-snapshots/.gitkeep
 artifacts/db-backup/*.sql.gz
+artifacts/db-backup/*.sql
 
 # Node/composer caches
 node_modules/
 .npm/
 composer.phar
+
+# PageSpeed tooling artifacts
+.cache/
+.lighthouseci/
+artifacts/pagespeed/

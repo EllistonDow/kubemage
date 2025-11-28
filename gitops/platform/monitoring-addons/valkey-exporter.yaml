@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valkey-exporter
+  namespace: cache
+  labels:
+    app.kubernetes.io/name: valkey-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valkey-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: valkey-exporter
+        kubemage.io/component: valkey
+    spec:
+      containers:
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.58.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --redis.addr=redis://valkey.cache.svc.cluster.local:6379
+            - --web.listen-address=:9121
+          ports:
+            - name: metrics
+              containerPort: 9121
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey-exporter
+  namespace: cache
+  labels:
+    app.kubernetes.io/name: valkey-exporter
+spec:
+  ports:
+    - name: metrics
+      port: 9121
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: valkey-exporter
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: valkey-exporter
+  namespace: monitoring
+  labels:
+    kubemage.io/component: valkey
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valkey-exporter
+  namespaceSelector:
+    matchNames:
+      - cache
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
