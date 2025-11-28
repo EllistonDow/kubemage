@@ -40,7 +40,10 @@ spec:
         proxysql:
           enabled: false
         haproxy:
-          enabled: false
+          enabled: true
+          size: 1
+          affinity:
+            antiAffinityTopologyKey: ""
         backup:
           enabled: false
         logCollector:
