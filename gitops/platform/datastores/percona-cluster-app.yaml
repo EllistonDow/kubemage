@@ -18,6 +18,9 @@ spec:
           configuration: |
             [mysqld]
             pxc_strict_mode=PERMISSIVE
+            log_bin_trust_function_creators=1
+          affinity:
+            antiAffinityTopologyKey: ""
           resources:
             requests:
               cpu: 500m
@@ -51,3 +54,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
