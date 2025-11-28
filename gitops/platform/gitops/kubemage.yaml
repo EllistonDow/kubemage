@@ -24,11 +24,11 @@ spec:
       kind: Secret
       namespace: demo
       name: demo-magento-secrets
-      jsonPointers:
-        - /data
+      jqPathExpressions:
+        - .
     - group: ""
       kind: Secret
       namespace: bdgy
       name: bdgy-magento-secrets
-      jsonPointers:
-        - /data
+      jqPathExpressions:
+        - .
