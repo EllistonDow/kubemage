@@ -4,10 +4,11 @@ metadata:
   name: argocd-web
   namespace: argocd
   annotations:
-    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     nginx.ingress.kubernetes.io/whitelist-source-range: "0.0.0.0/0"
 spec:
+  ingressClassName: nginx
   rules:
     - host: argocd.k8s.bdgyoo.com
       http:
@@ -30,9 +31,10 @@ metadata:
   name: grafana-web
   namespace: monitoring
   annotations:
-    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/whitelist-source-range: "0.0.0.0/0"
 spec:
+  ingressClassName: nginx
   rules:
     - host: grafana.k8s.bdgyoo.com
       http:
@@ -55,10 +57,11 @@ metadata:
   name: minio-console
   namespace: object-storage
   annotations:
-    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/whitelist-source-range: "0.0.0.0/0"
 spec:
+  ingressClassName: nginx
   rules:
     - host: minio.k8s.bdgyoo.com
       http:

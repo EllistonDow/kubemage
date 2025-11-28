@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - argocd.yaml
   - kubemage.yaml
+  - cert-manager.yaml
   - monitoring.yaml
   - monitoring-addons.yaml
   - monitoring-crds.yaml
@@ -10,3 +11,4 @@ resources:
   - gatekeeper.yaml
   - gatekeeper-policies.yaml
   - datastores.yaml
+  - ../security/cert-manager-clusterissuer.yaml
