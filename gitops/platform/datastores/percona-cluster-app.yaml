@@ -44,6 +44,7 @@ spec:
           enabled: false
         logCollector:
           enabled: false
+        updateStrategy: RollingUpdate
   destination:
     server: https://kubernetes.default.svc
     namespace: databases
