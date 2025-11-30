@@ -5,7 +5,13 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - 51.51.51.100-51.51.51.110  # TODO: 替换成 OVH Failover IP 段
+    - 144.217.149.203/32
+    - 149.56.244.16/32
+    - 149.56.123.163/32
+    - 66.70.152.224/32
+    - 142.44.177.171/32
+    - 66.70.159.109/32
+    - 51.161.21.62/32
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
