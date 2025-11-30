@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ingress-nginx
-  labels:
-    kubemage.io/managed: "true"
-    kubernetes.io/metadata.name: ingress-nginx

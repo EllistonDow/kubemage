@@ -10,8 +10,11 @@ spec:
     chart: ingress-nginx
     targetRevision: 4.11.2
     helm:
+      releaseName: ingress-nginx
       values: |
+        fullnameOverride: ingress-nginx
         controller:
+          fullnameOverride: ingress-nginx-controller
           replicaCount: 1
           ingressClassResource:
             name: nginx
@@ -22,9 +25,14 @@ spec:
             annotations:
               metallb.universe.tf/address-pool: public-pool
               external-dns.alpha.kubernetes.io/hostname: "magento.k8s.bdgyoo.com,bdgy.k8s.bdgyoo.com"
+            loadBalancerIP: 51.222.241.152
+            externalTrafficPolicy: Local
           config:
             use-forwarded-headers: "true"
             enable-real-ip: "true"
+        admissionWebhooks:
+          patch:
+            enabled: true
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
