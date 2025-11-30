@@ -4,7 +4,7 @@ resources:
   - namespace-databases.yaml
   - namespace-object-storage.yaml
   - secret-percona-secrets.yaml
-  - minio-secret.enc.yaml
+  - minio-secret.yaml
   - percona-operator-app.yaml
   - percona-cluster-app.yaml
   - percona-grant-super-job.yaml

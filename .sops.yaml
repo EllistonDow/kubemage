@@ -4,18 +4,3 @@ creation_rules:
     key_groups:
       - age:
           - age16xulfqsvdvw9ne58gadm34dad7jlgrenw8mjyv0msjsdjg0f7v5sz3smuk
-  - path_regex: gitops/platform/datastores/minio-secret\.enc\.yaml
-    encrypted_regex: '^(data|stringData)$'
-    key_groups:
-      - age:
-          - age16xulfqsvdvw9ne58gadm34dad7jlgrenw8mjyv0msjsdjg0f7v5sz3smuk
-  - path_regex: gitops/platform/messaging/.*\.enc\.yaml
-    encrypted_regex: '^(data|stringData)$'
-    key_groups:
-      - age:
-          - age16xulfqsvdvw9ne58gadm34dad7jlgrenw8mjyv0msjsdjg0f7v5sz3smuk
-  - path_regex: gitops/platform/search/.*\.enc\.yaml
-    encrypted_regex: '^(data|stringData)$'
-    key_groups:
-      - age:
-          - age16xulfqsvdvw9ne58gadm34dad7jlgrenw8mjyv0msjsdjg0f7v5sz3smuk
