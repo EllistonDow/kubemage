@@ -2,19 +2,25 @@
 
 ## 部署概览
 - **Namespace / Release**：`object-storage` / `minio`
-- **Chart**：`minio/minio`（v5.3.0，mode=distributed，replicas=4）
-- **Image**：`quay.io/minio/minio:RELEASE.2024-10-13T22-27-07Z`（由 Helm chart 自动解析最新 tag）
+- **Chart**：`minio/minio`（v5.4.0，通过 `gitops/platform/datastores/minio-app.yaml` 由 Argo CD 纳管，mode=distributed，replicas=4）
+- **Image**：`quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z`（由 Helm chart 自动解析最新 tag）
 - **持久化**：`local-path` StorageClass，四个 PVC（`export-minio-{0..3}`）每个 200 Gi，合计 800 Gi 原始容量
 - **服务**：
   - API（S3 兼容）：`minio.object-storage.svc.cluster.local:9000`（ClusterIP `10.103.160.153`）
   - 控制台：`minio-console.object-storage.svc.cluster.local:9001`
-- **Root 凭据（临时，仅供初始化）**
+- **Root 凭据（由 GitOps Secret 管理）**
   - User：`kubemageadmin`
   - Password：`Qb5sXbrwg4mdgTkR0GptUMB+f1p77pb8`
-  - 已写入 Secret：`minio`（`object-storage` namespace）
+  - 已写入 `gitops/platform/datastores/minio-secret.enc.yaml`（SOPS 加密，部署后在 `object-storage` namespace 生成 `minio-root-credentials` Secret）
 - **预创建 Buckets**：`demo-media`、`bdgy-media`、`shared-backup`
 
 > ⚠️ 以上 root 账户仅供当前多租户共享数据层的引导阶段使用。上线前请创建每个站点独立的 IAM 用户，并通过 `mc admin user add` + policy 绑定来细化权限，同时轮换 root 凭据。
+
+## GitOps 部署
+1. 在仓库提交 `gitops/platform/datastores/minio-app.yaml` 及相关 Secret/Namespace 变更，Argo CD 的 `datastores` 应用会自动创建/更新 `Application minio`。
+2. `minio` Application 指向 `https://charts.min.io/`，同步后会在 `object-storage` namespace 内创建 StatefulSet/PVC/Service。
+3. Root 凭据由 SOPS 加密文件渲染为 `minio-root-credentials`，其它组件如 `dashboard-ingress.yaml`、`monitoring-addons/` 会在各自 Application 中引用既有 Service。
+4. 禁止直接执行 `helm upgrade --install minio ...`；如需调整容量/版本，请修改 Git 中的 `helm.values` 并通过 PR 触发新的同步。
 
 ## 站点凭据与集成
 - 已为 demo/bdgy 站点创建独立 IAM：`demoMediaUser`、`bdgyMediaUser`，策略仅允许访问各自 bucket（`demo-media`、`bdgy-media`）。

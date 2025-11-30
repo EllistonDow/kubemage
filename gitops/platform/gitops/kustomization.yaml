@@ -11,4 +11,5 @@ resources:
   - gatekeeper.yaml
   - gatekeeper-policies.yaml
   - datastores.yaml
+  - messaging.yaml
   - ../security/cert-manager-clusterissuer.yaml
