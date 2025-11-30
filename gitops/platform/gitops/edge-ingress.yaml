@@ -14,22 +14,25 @@ spec:
       values: |
         controller:
           replicaCount: 1
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          hostPort:
+            enabled: true
+            ports:
+              http: 80
+              https: 443
           ingressClassResource:
             name: nginx
             controllerValue: k8s.io/ingress-nginx
             default: true
           service:
-            type: LoadBalancer
-            annotations:
-              metallb.universe.tf/address-pool: public-pool
-              external-dns.alpha.kubernetes.io/hostname: "magento.k8s.bdgyoo.com,bdgy.k8s.bdgyoo.com"
-            externalTrafficPolicy: Local
+            enabled: true
+            type: ClusterIP
           config:
             use-forwarded-headers: "true"
             enable-real-ip: "true"
         admissionWebhooks:
-          patch:
-            enabled: true
+          enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
