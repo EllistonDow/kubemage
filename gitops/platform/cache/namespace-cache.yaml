@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cache
+  labels:
+    kubemage.io/managed: "true"
+    kubernetes.io/metadata.name: cache
