@@ -12,4 +12,5 @@ resources:
   - gatekeeper-policies.yaml
   - datastores.yaml
   - messaging.yaml
+  - argocd-config.yaml
   - ../security/cert-manager-clusterissuer.yaml
