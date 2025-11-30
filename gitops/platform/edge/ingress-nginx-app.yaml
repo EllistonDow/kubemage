@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://raw.githubusercontent.com/kubernetes/ingress-nginx
+    chart: ingress-nginx
+    targetRevision: 4.11.2
+    helm:
+      values: |
+        controller:
+          replicaCount: 1
+          service:
+            type: LoadBalancer
+            annotations:
+              metallb.universe.tf/address-pool: public-pool
+              external-dns.alpha.kubernetes.io/hostname: "magento.k8s.bdgyoo.com,bdgy.k8s.bdgyoo.com"
+          ingressClassResource:
+            default: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
